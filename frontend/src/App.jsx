@@ -1,191 +1,208 @@
 /***************************************************************
-** Frontend App Component
-** 입력 -> 전송 -> 백엔드 호출 -> 답변 표시 
-****************************************************************/
-import { useEffect, useMemo, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+ * App.jsx
+ * - React(Chat UI) + FastAPI(/chat, /chat/{session_id}) MVP
+ * - session_id는 URL path(/chat/:session_id)에 노출
+ * - 대화 내역은 localStorage(chat_history_{sessionId})에 저장/복구
+ * - 말풍선 UI, 자동 스크롤, 로딩/에러 UX 포함
+ ***************************************************************/
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import "./App.css";
 
+function safeJsonParse(value, fallback) {
+  try {
+    if (!value) return fallback;
+    return JSON.parse(value);
+  } catch {
+    return fallback;
+  }
+}
 
-function getSessionIdFrmPath() {
-  const parts = window.location.pathname.split("/").filter(Boolean);
-
-  // /chat/:session_id 형태인지 확인
-  if (parts[0] === 'chat' && parts[1]) 
-    return parts[1];
-  return null;
+function ensureSessionId(current) {
+  if (current) return current;
+  // 브라우저 지원 시 UUID 생성
+  if (crypto?.randomUUID) return crypto.randomUUID();
+  // fallback
+  return String(Date.now());
 }
 
 export default function App() {
-  const { session_id } = useParams();  
   const navigate = useNavigate();
+  const { session_id: routeSessionId } = useParams();
 
-  // [상태 변수] message (사용자 입력), answer (챗봇 답변)
-  const [message, setMessage] = useState("");
-  const [history, setHistory] = useState([]); // 누적 대화
+  const [sessionId, setSessionId] = useState("");
+  const [input, setInput] = useState("");
+  const [history, setHistory] = useState([]); // [{role:'user'|'assistant', content:'...'}]
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
 
-  const [sessionId, setSessionId] = useState(session_id ?? null);
+  const bottomRef = useRef(null);
 
-  // 최초 진입
-  // 처음 접속 시, URL 경로에서 session_id 설정
-  useEffect(() => {
-    if (!sessionId) {
-      const newId = crypto.randomUUID();
-      setSessionId(newId);
-      navigate(`/chat/${newId}`, { replace: true });
-    }
-  }, [sessionId, navigate]);
-
-  // sessionId 변경 시, URL 보정
-  // 이미 sessionId가 설정된 상태라면, 그 sessionId를 URL에 반영
-  useEffect(() => {
-    if (!sessionId) 
-      return;
-
-    const newPath = `/chat/${sessionId}`;
-    if (window.location.pathname !== newPath){
-      window.history.replaceState(null, '', newPath);
-    }
+  const storageKey = useMemo(() => {
+    if (!sessionId) return "";
+    return `chat_history_${sessionId}`;
   }, [sessionId]);
 
-  // sessionId 기준으로 localStorage에서 이전 대화 불러오기
+  // 1) 최초 진입: URL의 session_id가 있으면 그걸 사용, 없으면 새로 생성해서 URL에 반영
   useEffect(() => {
-    if (!sessionId)
-      return;
+    const sid = ensureSessionId(routeSessionId);
+    setSessionId(sid);
 
-    const key = `chat_history_${sessionId}`;
-    const savedHistory = localStorage.getItem(key);
-
-    if (savedHistory) {
-      try {
-        const parsed = JSON.parse(savedHistory);
-        if (Array.isArray(parsed)) 
-          setHistory(parsed);
-        else
-          setHistory([]);
-      } catch (e) {
-        console.error('Failed to parse saved history', e);
-        setHistory([]);
-      }
-    } else {
-      setHistory([]);  // 처음 접속 시, 빈 배열로 초기화
+    // URL이 /chat/:sid 형태가 아니면 교정 (replace)
+    if (routeSessionId !== sid) {
+      navigate(`/chat/${sid}`, { replace: true });
     }
-  }, [sessionId]);
+  }, [routeSessionId, navigate]);
 
-  // history 변경될 때 마다 localStorage에 저장
+  // 2) sessionId 확정되면: localStorage에서 히스토리 복구
   useEffect(() => {
-    if (!sessionId)
-      return;
+    if (!storageKey) return;
+    const saved = safeJsonParse(localStorage.getItem(storageKey), []);
+    setHistory(Array.isArray(saved) ? saved : []);
+  }, [storageKey]);
 
-    const key = `chat_history_${sessionId}`;
-    localStorage.setItem(key, JSON.stringify(history));
-  }, [history, sessionId]);
+  // 3) history 변경 시: localStorage에 저장 + 자동 스크롤
+  useEffect(() => {
+    if (!storageKey) return;
+    localStorage.setItem(storageKey, JSON.stringify(history));
 
-  // API URL: vite proxy 사용 중이면 /api로 호출
-  const apiBase = useMemo(() => '/api', []);
+    // 새 메시지 추가될 때 아래로 이동
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [history, storageKey]);
 
-  // [전송 버튼] 챗봇에 메시지를 보내고 답변을 받는 함수
-  async function onSend(e){
-    e.preventDefault();
-    const userText = message.trim();
-    
-    if(!userText || loading) 
-      return;
+  async function send() {
+    const message = input.trim();
+    if (!message || !sessionId || loading) return;
 
-    setMessage('');
+    setErrorMsg("");
     setLoading(true);
 
-    // 1) user 메시지 추가
-    setHistory((prev) => [...prev, {role: 'user', content: userText}]);
-
-    // 2) assistant placeholder 추가 (나중에 교체)
-    const placeholderId = crypto.randomUUID();
-    setHistory((prev) => [
-      ...prev,
-      {role: 'assistant', content: '답변 생성 중...', id: placeholderId},
-    ]);
+    // UI에 먼저 user 메시지 반영
+    setHistory((prev) => [...prev, { role: "user", content: message }]);
+    setInput("");
 
     try {
-      // path param 방식: /chat/{session_id}
-      const url = sessionId ? `${apiBase}/chat/${sessionId}` : `${apiBase}/chat`;
-
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        // session_id는 body에서 받도록 해두면 더 안전 (Backend가 허용한다면)
-        body: JSON.stringify({message: userText, session_id: sessionId}),
+      // ✅ 백엔드가 /chat/{session_id}를 받도록 맞춘 형태
+      // (vite proxy 기준: /api -> http://localhost:8000 로 proxy)
+      const res = await fetch(`/api/chat/${sessionId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message }),
       });
 
-      if (!res.ok) 
-        throw new Error(`HTTP ${res.status}`);
-
-      const data = await res.json();
-      
-      // sessionId가 없었으면 새로 설정
-      if (data?.session_id && !sessionId) {
-        setSessionId(data.session_id);
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(`HTTP ${res.status} ${res.statusText} ${text}`);
       }
 
-      // 3) placeholder를 실제 답변으로 교체
-      setHistory((prev) => 
-        prev.map((m) =>
-          m.id === placeholderId
-            ? {...m, content: data.answer || '답변이 없습니다.'}
-            : m
-        )
+      const data = await res.json();
+      const answer = data?.answer ?? "";
+      const returnedSessionId = data?.session_id ?? sessionId;
+
+      // session_id가 바뀌는 설계라면 URL도 교정 가능 (현재는 고정이라 보통 동일)
+      if (returnedSessionId && returnedSessionId !== sessionId) {
+        setSessionId(returnedSessionId);
+        navigate(`/chat/${returnedSessionId}`, { replace: true });
+      }
+
+      setHistory((prev) => [...prev, { role: "assistant", content: answer }]);
+    } catch (e) {
+      setErrorMsg(
+        "답변 생성에 실패했어요. 잠시 후 다시 시도해 주세요. (백엔드 실행/키 설정 확인)"
       );
-    } catch (error) {
-      setHistory((prev) =>
-        prev.map((m) =>
-          m.id === placeholderId
-            ? { ...m, content: "서버 요청에 실패했습니다. 잠시 후 다시 시도해주세요." }
-            : m
-        )
-      );
-      console.error(error);
+      // 실패해도 UX상 “assistant 실패 메시지”를 대화로 남기고 싶으면 아래 주석 해제
+      // setHistory((prev) => [...prev, { role: "assistant", content: "⚠️ 답변 생성 실패" }]);
+      console.error(e);
     } finally {
       setLoading(false);
     }
   }
 
-  // UI 렌더링
+  function onKeyDown(e) {
+    // Enter로 전송, Shift+Enter는 줄바꿈(원하면 textarea로 바꿀 수 있음)
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      send();
+    }
+  }
+
+  function clearChat() {
+    if (!storageKey) return;
+    localStorage.removeItem(storageKey);
+    setHistory([]);
+    setErrorMsg("");
+  }
+
   return (
-      <div style={{ maxWidth: 1000, margin: "40px auto", padding: 24 }}>
-        <h1>전세사기피해 상담 챗봇 (Production MVP)</h1>
+    <div className="page">
+      <div className="container">
+        <div className="header">
+          <h1 className="title">전세사기피해 상담 챗봇 (Production MVP)</h1>
+          <p className="subtitle">
+            session_id 기반 대화 + localStorage 히스토리 저장 (새로고침 유지)
+          </p>
+        </div>
 
-        <form onSubmit={onSend} style={{ display: "flex", gap: 8, marginTop: 16 }}>
-          <input
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder="질문을 입력하세요"
-            style={{ flex: 1, padding: 10, border: "1px solid #aaa" }}
-          />
-          <button type="submit" disabled={loading} style={{ padding: "10px 18px" }}>
-            전송
-          </button>
-        </form>
+        <div className="chatWrap">
+          <div className="chatTop">
+            <input
+              className="input"
+              value={input}
+              placeholder="질문을 입력하세요"
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={onKeyDown}
+              disabled={loading}
+            />
+            <button className="sendBtn" onClick={send} disabled={loading || !input.trim()}>
+              전송
+            </button>
+          </div>
 
-        <div style={{ marginTop: 24 }}>
-          <h3>대화</h3>
+          <div className="metaRow">
+            <div className="sessionChip">session_id: {sessionId || "-"}</div>
+            <button className="clearBtn" onClick={clearChat}>
+              대화 지우기
+            </button>
+          </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {history.map((m, idx) => (
-              <div
-                key={m.id ?? idx}
-                style={{
-                  whiteSpace: "pre-wrap",
-                  padding: 12,
-                  borderRadius: 8,
-                  border: "1px solid #eee",
-                  background: m.role === "user" ? "#f7f7ff" : "#ffffff",
-                }}
-              >
-                <b>{m.role === "user" ? "나" : "챗봇"}</b>
-                <div style={{ marginTop: 6 }}>{m.content}</div>
+          {errorMsg && <div className="errorBar">{errorMsg}</div>}
+
+          <div className="chatBody">
+            <div className="sectionLabel">대화</div>
+
+            {history.map((m, idx) => {
+              const who = m.role === "user" ? "나" : "챗봇";
+              const rowClass = m.role === "user" ? "msgRow user" : "msgRow assistant";
+              const bubbleClass =
+                m.role === "user" ? "bubble user" : "bubble assistant";
+
+              return (
+                <div className={rowClass} key={`${m.role}-${idx}`}>
+                  <div className={bubbleClass}>
+                    <div className="bubbleHeader">{who}</div>
+                    {m.content}
+                  </div>
+                </div>
+              );
+            })}
+
+            {loading && (
+              <div className="msgRow assistant">
+                <div className="bubble assistant">
+                  <div className="bubbleHeader">챗봇</div>
+                  <span className="typingDots" aria-label="typing">
+                    <span />
+                    <span />
+                    <span />
+                  </span>
+                </div>
               </div>
-            ))}
+            )}
+
+            <div ref={bottomRef} />
           </div>
         </div>
       </div>
-    );
+    </div>
+  );
 }

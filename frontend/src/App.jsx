@@ -7,7 +7,77 @@
  ***************************************************************/
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+
 import "./App.css";
+
+
+// role별 표시(이모지)
+const AVATAR = {
+  user: "🙋‍♀️",       // 나
+  assistant: "🤖",   // 챗봇
+};
+
+
+// 복사 함수
+async function copyToClipboard(text) {  
+  await navigator.clipboard.writeText(text);
+}
+
+function ChatMessage({ role, content }) {
+  const isBot = role === "assistant";
+
+  return (
+    <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
+      <div style={{ width: 28, textAlign: "center", fontSize: 20 }}>
+        {AVATAR[role] ?? "💬"}
+      </div>
+
+      <div style={{
+        flex: 1,
+        border: "1px solid #e5e7eb",
+        borderRadius: 10,
+        padding: 12,
+        background: isBot ? "#fff" : "#f7f7fb",
+        position: "relative",
+      }}>
+        {/* 복사 버튼: 챗봇 답변에만 */}
+        {isBot && (
+          <button
+            onClick={() => copyToClipboard(content)}
+            style={{
+              position: "absolute",
+              top: 8,
+              right: 8,
+              fontSize: 12,
+              padding: "6px 10px",
+              borderRadius: 8,
+              border: "1px solid #ddd",
+              background: "white",
+              cursor: "pointer",
+            }}
+            title="답변 복사"
+          >
+            📋 복사
+          </button>
+        )}
+
+        {/* 마크다운 렌더: 챗봇만 / 유저는 일반 텍스트 */}
+        {isBot ? (
+          <div style={{ paddingRight: 70 }}>
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {content}
+            </ReactMarkdown>
+          </div>
+        ) : (
+          <div style={{ whiteSpace: "pre-wrap" }}>{content}</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 
 function safeJsonParse(value, fallback) {
   try {
@@ -26,6 +96,8 @@ function ensureSessionId(current) {
   return String(Date.now());
 }
 
+
+
 export default function App() {
   const navigate = useNavigate();
   const { session_id: routeSessionId } = useParams();
@@ -35,6 +107,8 @@ export default function App() {
   const [history, setHistory] = useState([]); // [{role:'user'|'assistant', content:'...'}]
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [copiedIndex, setCopiedIndex] = useState(null);
+
 
   const bottomRef = useRef(null);
 
@@ -87,7 +161,7 @@ export default function App() {
       const res = await fetch(`/api/chat/${sessionId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message }),
+        body: JSON.stringify({ message, session_id: sessionId }),
       });
 
       if (!res.ok) {
@@ -171,20 +245,70 @@ export default function App() {
             <div className="sectionLabel">대화</div>
 
             {history.map((m, idx) => {
-              const who = m.role === "user" ? "나" : "챗봇";
-              const rowClass = m.role === "user" ? "msgRow user" : "msgRow assistant";
-              const bubbleClass =
-                m.role === "user" ? "bubble user" : "bubble assistant";
+  const isUser = m.role === "user";
 
-              return (
-                <div className={rowClass} key={`${m.role}-${idx}`}>
-                  <div className={bubbleClass}>
-                    <div className="bubbleHeader">{who}</div>
-                    {m.content}
-                  </div>
-                </div>
-              );
-            })}
+  return (
+    <div
+      key={idx}
+      style={{
+        display: "flex",
+        justifyContent: isUser ? "flex-end" : "flex-start",
+        alignItems: "flex-start",
+        gap: 10,
+        marginBottom: 12,
+      }}
+    >
+      {/* assistant avatar (왼쪽) */}
+      {!isUser && (
+        <div style={{ width: 32, textAlign: "center", fontSize: 20 }}>
+          🤖
+        </div>
+      )}
+
+      {/* bubble */}
+      <div
+        style={{
+          maxWidth: "75%",
+          border: "1px solid #e5e7eb",
+          borderRadius: 12,
+          padding: "10px 12px",
+          background: isUser ? "#f3f4f6" : "#ffffff",
+          whiteSpace: "pre-wrap",
+          overflowWrap: "anywhere",
+        }}
+      >
+        {/* (assistant만) 복사 버튼 */}
+        {!isUser && (
+          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
+            <button
+              className="copy-btn"
+              onClick={async () => {
+                await navigator.clipboard.writeText(m.content ?? "");
+                setCopiedIndex(idx);
+                setTimeout(() => setCopiedIndex(null), 1200);
+              }}
+              aria-label="답변 복사"
+            >
+              📋 복사
+              {copiedIndex === idx && <span className="copy-tooltip">복사했습니다.</span>}
+            </button>
+          </div>
+        )}
+
+        {/* markdown 렌더링 쓰는 경우 여기에서 렌더 */}
+        {/* 예: <ReactMarkdown>{m.content}</ReactMarkdown> */}
+        <div>{m.content}</div>
+      </div>
+
+      {/* user avatar (오른쪽) */}
+      {isUser && (
+        <div style={{ width: 32, textAlign: "center", fontSize: 20 }}>
+          🙋‍♀️
+        </div>
+      )}
+    </div>
+  );
+})}
 
             {loading && (
               <div className="msgRow assistant">

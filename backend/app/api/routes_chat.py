@@ -22,12 +22,13 @@ FastAPI Chat API 라우터 정의 파일입니다.
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from app.service.llm_service import ask_llm
+
+from app.service.llm_service import ask_llm, get_history
 
 
 router = APIRouter()
 
-class ChatRequet(BaseModel):
+class ChatRequest(BaseModel):
     """
     채팅 요청 데이터 모델
 
@@ -50,7 +51,8 @@ def health():
     }
 
 @router.post('/chat')
-def chat(request: ChatRequet):
+@router.post('/chat/{session_id}')
+def chat(request: ChatRequest):
     """
     챗봇 질의 API
     - 사용자 질문을 받아 LLM 응답을 반환
@@ -66,4 +68,29 @@ def chat(request: ChatRequet):
         raise HTTPException(
             status_code=500,
             detail='Failed to generate answer from LLM'
+        )
+    
+@router.get('chat/{session_id}/history')
+def chat_history(session_id: str):
+    """
+    대화 히스토리 조회 API
+    - 특정 세션의 대화 기록을 반환
+
+    Args:
+        session_id (str): 대화 세션 식별자
+
+    Returns:
+        List[Message]: 해당 세션의 대화 히스토리 메시지 목록
+    """
+    try:
+        history = get_history(session_id)
+        return {
+            'session_id': session_id,
+            'history': history
+        }
+    
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail='Failed to retrieve chat history'
         )

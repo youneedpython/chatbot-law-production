@@ -22,13 +22,23 @@ LLM(대화형 체인) 호출을 담당하는 서비스(Service) 계층 파일입
 
 import uuid
 from functools import lru_cache
-from typing import Optional, Tuple
+from typing import Optional, Dict, List, Literal, TypedDict
 
 from app.core.logger import get_logger
 from app.service.chain_builder import build_conversational_chain
 
 
 logger = get_logger('chatbot-law-prod.llm')
+
+Role = Literal['user', 'assistant']
+
+class Message(TypedDict):
+    role: Role
+    content: str
+
+## v0.3.0: 메모리 저장소 (서버 재시작하면 날아감)
+SESSION_STORE: Dict[str, List[Message]] = {}
+
 
 @lru_cache(maxsize=1) ## 함수 반환값을 캐싱하여 재사용
 def get_chain():
@@ -42,7 +52,7 @@ def get_chain():
     3) 주의: 체인 내부 상태(히스토리 등)는 session_id로 구분 관리됨
 
     Returns:    
-        RunnableWithMessageHistory: 대화 체인 객체  
+        build_conversational_chain()의 반환값 (대화 체인 객체) 
 
     cf) 
     lru_cache 문서: https://docs.python.org/3/library/functools.html#functools.lru_cache
@@ -51,7 +61,33 @@ def get_chain():
     logger.info('Initializing conversational chain (cached).')
     return build_conversational_chain()
 
-def ask_llm(message: str, session_id: str | None = None):
+
+def append_history(session_id: str, role: Role, content: str) -> None:
+    """
+    세션별 대화 히스토리에 메시지를 추가합니다.
+
+    Args:
+        session_id (str): 대화 세션 식별자
+        role (Role): 메시지 역할 ('user' 또는 'assistant')
+        content (str): 메시지 내용
+    """
+    SESSION_STORE.setdefault(session_id, []).append({'role': role, 'content': content})
+
+
+def get_history(session_id: str) -> List[Message]:
+    """
+    세션별 대화 히스토리를 반환합니다.
+
+    Args:
+        session_id (str): 대화 세션 식별자
+
+    Returns:
+        List[Message]: 해당 세션의 대화 히스토리 메시지 목록
+    """
+    return SESSION_STORE.get(session_id, [])
+
+
+def ask_llm(message: str, session_id: Optional[str] = None):
     """
     LLM에게 질문을 전달하고 답변과 session_id를 반환합니다.
 
@@ -68,6 +104,10 @@ def ask_llm(message: str, session_id: str | None = None):
 
     logger.info("ask_llm called. session_id=%s, msg_len=%d", session_id, len(message))
 
+    ## 1) user 메시지 히스토리에 추가
+    append_history(session_id, 'user', message)
+
+    ## 2) LLM 호출 (기존 체인 방식 유지)
     chain = get_chain()
     logger.info('chain : %s', chain)
 
@@ -80,9 +120,17 @@ def ask_llm(message: str, session_id: str | None = None):
         ## token은 str 또는 특별 토큰 객체일 수 있음
         ## token이 문자열이 아닐 가능성에 대비 (안전장치)
         chunks.append(token if isinstance(token, str) else str(token))
+    
+    # logger.info('chunks: %s', chunks)
 
     answer = ''.join(chunks).strip()
     logger.info('ask_llm completed. session_id=%s, answer_len=%d', session_id, len(answer))
+
+    ## 3) assistant 메시지 히스토리에 추가
+    append_history(session_id, 'assistant', answer)
+
+    logger.info("chat completed | session_id=%s | user_len=%s | answer_len=%s",
+                session_id, len(message), len(answer))
 
     return answer, session_id
 

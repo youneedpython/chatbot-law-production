@@ -26,7 +26,18 @@ export default function App() {
 
   const [sessionId, setSessionId] = useState(session_id ?? null);
 
-  // 세션ID가 생기면 URL을 /chat/{sessionId}로 유지
+  // 최초 진입
+  // 처음 접속 시, URL 경로에서 session_id 설정
+  useEffect(() => {
+    if (!sessionId) {
+      const newId = crypto.randomUUID();
+      setSessionId(newId);
+      navigate(`/chat/${newId}`, { replace: true });
+    }
+  }, [sessionId, navigate]);
+
+  // sessionId 변경 시, URL 보정
+  // 이미 sessionId가 설정된 상태라면, 그 sessionId를 URL에 반영
   useEffect(() => {
     if (!sessionId) 
       return;
@@ -36,6 +47,39 @@ export default function App() {
       window.history.replaceState(null, '', newPath);
     }
   }, [sessionId]);
+
+  // sessionId 기준으로 localStorage에서 이전 대화 불러오기
+  useEffect(() => {
+    if (!sessionId)
+      return;
+
+    const key = `chat_history_${sessionId}`;
+    const savedHistory = localStorage.getItem(key);
+
+    if (savedHistory) {
+      try {
+        const parsed = JSON.parse(savedHistory);
+        if (Array.isArray(parsed)) 
+          setHistory(parsed);
+        else
+          setHistory([]);
+      } catch (e) {
+        console.error('Failed to parse saved history', e);
+        setHistory([]);
+      }
+    } else {
+      setHistory([]);  // 처음 접속 시, 빈 배열로 초기화
+    }
+  }, [sessionId]);
+
+  // history 변경될 때 마다 localStorage에 저장
+  useEffect(() => {
+    if (!sessionId)
+      return;
+
+    const key = `chat_history_${sessionId}`;
+    localStorage.setItem(key, JSON.stringify(history));
+  }, [history, sessionId]);
 
   // API URL: vite proxy 사용 중이면 /api로 호출
   const apiBase = useMemo(() => '/api', []);

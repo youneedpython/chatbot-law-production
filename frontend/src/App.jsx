@@ -11,6 +11,12 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 import "./App.css";
+// import royAvatar from "./assets/roy.svg";
+// import royAvatar from "./assets/roy.png";
+// import royAvatar from "./assets/avatars/roy_128x128.png";
+// import userAvatar from "./assets/avatars/user_128x128.png";
+import royAvatar from "./assets/avatars/roy_256x256.png";
+import userAvatar from "./assets/avatars/user_256x256.png";
 
 
 // role별 표시(이모지)
@@ -260,9 +266,17 @@ export default function App() {
     >
       {/* assistant avatar (왼쪽) */}
       {!isUser && (
-        <div style={{ width: 32, textAlign: "center", fontSize: 20 }}>
-          🤖
-        </div>
+        <img
+            src={royAvatar}
+            alt="로이"
+            width={32}
+            height={32}
+            decoding="async"
+            style={{
+              flexShrink: 0,
+              borderRadius: "50%",
+            }}
+          />
       )}
 
       {/* bubble */}
@@ -302,9 +316,17 @@ export default function App() {
 
       {/* user avatar (오른쪽) */}
       {isUser && (
-        <div style={{ width: 32, textAlign: "center", fontSize: 20 }}>
-          🙋‍♀️
-        </div>
+        <img
+            src={userAvatar}
+            alt="사용자"
+            width={32}
+            height={32}
+            decoding="async"
+            style={{
+              flexShrink: 0,
+              borderRadius: "50%",
+            }}
+          />
       )}
     </div>
   );

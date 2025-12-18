@@ -1,6 +1,7 @@
 from fastapi import FastAPI
-from app.api.routes_chat import router as chat_router
+from app.routers import history
 
 
-app = FastAPI()
-app.include_router(chat_router)
+app = FastAPI(title="Chatbot Law API")
+
+app.include_router(history.router)

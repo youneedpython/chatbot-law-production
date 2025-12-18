@@ -30,11 +30,11 @@ class Conversation(Base):
     id: Mapped[str] = mapped_column(String(64), primary_key=True, index=True)
 
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+        DateTime(timezone=True), default=datetime.utcnow(), nullable=False
     )
 
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+        DateTime(timezone=True), default=datetime.utcnow(), nullable=False
     )
 
     ## 최신순 조회/정렬에 유용
@@ -70,7 +70,7 @@ class Message(Base):
     seq: Mapped[int] = mapped_column(Integer, nullable=False)
 
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=datetime.utcnow, nullable=False
+        DateTime(timezone=True), default=datetime.utcnow(), nullable=False
     )
 
     __table_args__ = (

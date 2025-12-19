@@ -55,15 +55,65 @@ export default function App() {
     }
   }, [routeSessionId, navigate]);
 
-  useEffect(() => {
-    if (!storageKey) return;
-    setHistory(safeJsonParse(localStorage.getItem(storageKey), []));
-  }, [storageKey]);
+  /** 
+  * 로컬스토리지 로드
+  */
+  // useEffect(() => {
+  //   if (!storageKey) 
+  //     return;
+  //   setHistory(safeJsonParse(localStorage.getItem(storageKey), []));
+  // }, [storageKey]);
 
+  /**
+   * 로컬스토리지에 저장
+   * SoT: Backend DB
+   */
+  // useEffect(() => {
+  //   if (!storageKey) 
+  //     return;
+  //   localStorage.setItem(storageKey, JSON.stringify(history));
+  // }, [history, storageKey]);
+
+  /**
+   * 서버에서 히스토리 로드
+   * */
   useEffect(() => {
-    if (!storageKey) return;
-    localStorage.setItem(storageKey, JSON.stringify(history));
-  }, [history, storageKey]);
+    if(!sessionId)
+      return;
+
+    const controller = new AbortController();
+
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/conversations/${sessionId}/messages?limit=100`,
+          { signal: controller.signal}
+        );
+
+        if (!res.ok) {
+          // 대화가 아직 없으면, 서버에서 빈 배열로 처리할 수도 있어서
+          // 404면 빈 히스토리로 시작
+          if (res.status === 404) {
+            setHistory([]);
+            return;
+          }
+          throw new Error(`HTTP ${res.status}`);
+        }
+
+        const data = await res.json();
+        const msgs = Array.isArray(data?.messages) ? data.messages : [];
+        setHistory(msgs.map((m) => ({ role: m.role, content: m.content })));
+      } catch (e) {
+        if (e.name === "AbortError") return;
+
+        console.error(e);
+        setHistory([]);
+      }
+    })();
+
+    return () => controller.abort();
+  }, [sessionId]);
+
 
   async function send() {
     const message = input.trim();
@@ -79,6 +129,10 @@ export default function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message }),
       });
+
+      if (!res.ok)
+        throw new Error(`HTTP ${res.status}`);
+
       const data = await res.json();
       setHistory((p) => [...p, { role: "assistant", content: data.answer }]);
     } finally {

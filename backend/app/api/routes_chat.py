@@ -70,7 +70,7 @@ def chat(request: ChatRequest):
             detail='Failed to generate answer from LLM'
         )
     
-@router.get('chat/{session_id}/history')
+@router.get('/chat/{session_id}/history')
 def chat_history(session_id: str):
     """
     대화 히스토리 조회 API

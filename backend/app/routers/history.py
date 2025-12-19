@@ -28,10 +28,7 @@ router = APIRouter(
     tags=["History"],
 )
 
-@router.get(
-    "/{session_id}/messages",
-    response_model=MessageListResponse,
-)
+@router.get("/{session_id}/messages", response_model=MessageListResponse,)
 def get_messages(
     session_id: str,
     limit: int = Query(50, ge=1, le=100),
@@ -56,10 +53,7 @@ def get_messages(
     )
 
 
-@router.post(
-    "/{session_id}/messages",
-    response_model=MessageResponse,
-)
+@router.post("/{session_id}/messages", response_model=MessageResponse,)
 def post_message(
     session_id: str,
     payload: MessageCreate,

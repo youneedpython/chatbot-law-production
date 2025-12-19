@@ -24,7 +24,7 @@ from app.schemas.chat import (
 
 
 router = APIRouter(
-    prefix="/api/conversations",
+    prefix="/conversations",
     tags=["History"],
 )
 

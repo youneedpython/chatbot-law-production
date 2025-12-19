@@ -1,176 +1,184 @@
-# 🏠 전세사기 피해 상담 챗봇 (Production MVP)
+# chatbot-law-prod
 
-전세사기 피해자를 위한 **상담용 AI 챗봇**입니다.  
-React + FastAPI 기반의 Production MVP로, 세션 기반 상담 흐름을 제공합니다.
+전세사기 피해자를 위한 **세션 기반 법률 상담 챗봇** 프로젝트입니다.
 
----
-
-## 📌 Project Overview
-
-이 프로젝트는 전세사기 피해자가 기본적인 법적 대응 방향을 이해하고,  
-상담 흐름을 세션 단위로 이어갈 수 있도록 돕는 AI 챗봇 서비스입니다.
-
-- Frontend: React (Vite)
-- Backend: FastAPI
-- LLM: OpenAI 기반 (LangChain)
-- Session 관리: URL Path Parameter (`/chat/{session_id}`)
+본 프로젝트는 단순한 PoC를 넘어, **실제 서비스로 확장 가능한 아키텍처 설계와 단계적 진화**를 목표로 합니다.
 
 ---
 
+## 📌 Project Vision
 
-## 🧱 Architecture
+- 전세사기 피해자가 **상담 맥락을 유지한 채** 법률 정보를 탐색할 수 있는 챗봇
+- Frontend 중심 상태 관리에서 벗어나 **Backend를 Source of Truth로 전환**
+- 향후 **RAG(법령·판례)**, **멀티 디바이스**, **케이스 관리**로 확장 가능한 구조
 
-```
-CHATBOT-LAW-PROD
-├── backend
-│   ├── app
-│   │   ├── api          # FastAPI 라우터
-│   │   ├── core         # 설정, 로깅
-│   │   ├── service      # LLM 비즈니스 로직
-│   │   └── main.py      # FastAPI 엔트리포인트
-│   ├── data
-│   │   └── keyword_dictionary.json
-│   ├── .env.example
-│   └── requirements.txt
-│
-├── frontend
-│   ├── src
-│   │   ├── App.jsx
-│   │   └── main.jsx
-│   ├── index.html
-│   └── vite.config.js
-│
-└── README.md
+---
+
+## 🏗️ Architecture Overview
+
+```text
+[ React (Vite) ]
+        │
+        ▼
+[ FastAPI Backend ]
+        │
+        ├─ Conversation / Message API
+        ├─ LLM Orchestration Layer
+        │
+        ▼
+[ SQLite Database ]
 ```
 
----
-
-## 🚀 Key Features (v0.2.0)
-
-### ✅ Session-based Chat
-- 첫 질문 시 `session_id` 자동 생성
-- 이후 모든 대화는 동일한 세션으로 유지
-- URL 구조:  
-  ```
-  /chat/{session_id}
-  ```
-
-### ✅ Production MVP Structure
-- Frontend / Backend 명확한 책임 분리
-- LLM 로직 분리 (`service` 계층)
-- 환경별 설정 관리 (`ENV=local|prod`)
-
-### ✅ Health Check
-- Backend 상태 확인용 엔드포인트 제공
-  ```
-  GET /health
+- **Frontend**: 사용자 인터페이스 및 세션 URL 관리
+- **Backend**: 대화 흐름 제어, 히스토리 저장, LLM 호출 오케스트레이션
+- **Database**: 대화방(conversation)과 메시지(message)의 영속 저장
 
 ---
 
-## ⚙️ 기술 스택
+## 🧱 Tech Stack
 
 ### Frontend
-- React (Vite)
+- React + Vite
+- React Router (session-based routing)
 - Fetch API
-- useState 기반 상태 관리
-- Vite proxy (/api → backend)
 
 ### Backend
 - FastAPI
-- Uvicorn
-- LLM API (OpenAI)
-- REST API (/health, /chat)
-- LangChain (Conversation Chain)
+- SQLAlchemy
+- SQLite
+
+### LLM
+- OpenAI (integration planned)
+- LLM orchestration layer implemented (stubbed in v0.4.0)
 
 ---
 
-## 🔌 API Endpoints
+## 🚀 Key Features (up to v0.4.0)
 
-### Health Check
-```
-GET /health
+### 1. Session-based Chat
+- URL 기반 session_id 생성 (`/chat/{session_id}`)
+- 새로고침 및 재접속 시 대화 유지
+
+### 2. Backend-driven Conversation History (v0.4.0)
+- SQLite 기반 대화 히스토리 영속화
+- `conversation_id = session_id` 설계
+- Source of Truth를 frontend(localStorage) → backend(DB)로 전환
+- 멀티 디바이스 대응 가능한 구조
+
+### 3. Clear Chat Orchestration Flow
+
+```text
+User Input
+   ↓
+Save User Message (DB)
+   ↓
+call_llm()  ← LLM Orchestration Layer
+   ↓
+Save Assistant Message (DB)
+   ↓
+Return Response
 ```
 
-**Response**
-```json
-{ "status": "ok" }
-```
+- LLM 호출 로직을 별도 함수로 분리
+- 향후 RAG / 히스토리 기반 응답으로 확장 가능
+
 ---
+
+## 📡 API Endpoints
 
 ### Chat
-```
-POST /chat/{session_id}
+
+```http
+POST /api/chat/{session_id}
 ```
 
-**Request Body**
-```json
-{
-  "message": "전세사기 피해 구제 방안은?"
-}
-```
-
-**Response**
-```json
-{
-  "answer": "...",
-  "session_id": "uuid"
-}
-```
-
-#### Design Decision
-- session_id를 Path Parameter로 사용한 이유
-  - URL 공유 및 북마크 가능
-  - 세션 상태를 명확히 식별
-  - RESTful한 리소스 표현
+- 사용자 메시지 전송 및 응답 생성
 
 ---
 
-## 🚀 로컬 실행 방법
+### Conversation History
+
+```http
+GET /api/conversations/{session_id}/messages
+```
+
+Response:
+```json
+{
+  "messages": [
+    { "role": "user", "content": "..." },
+    { "role": "assistant", "content": "..." }
+  ],
+  "has_more": false
+}
+```
+
+---
+
+## 🗄️ Database Schema (Simplified)
+
+### conversations
+- id (session_id)
+- created_at
+- updated_at
+
+### messages
+- conversation_id
+- seq
+- role (user / assistant)
+- content
+- created_at
+
+---
+
+## ▶️ How to Run (Development)
 
 ### Backend
-cd backend  
-pip install -r requirements.txt  
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload  
-
-Swagger: http://localhost:8000/docs  
-
----
+```bash
+cd backend
+pip install -r requirements.txt
+python -m app.init_db
+uvicorn app.main:app --reload
+```
 
 ### Frontend
-cd frontend  
-npm install  
-npm run dev  
-
-Web: http://localhost:5173   
-/api/* 요청은 자동으로 backend(localhost:8000)로 프록시됨
-
----
-
-## 🔐 환경변수
-- 실제 .env 파일은 Git에 포함되지 않음
-- backend/.env.example 참고
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
 ---
 
-## ⚠️ 주의
-- 본 챗봇은 법률 자문을 제공하지 않습니다
-- 실제 법적 판단이나 소송은 반드시 전문가(변호사, 공공기관) 상담 필요
-- LLM 응답은 참고용 정보로만 사용해야 합니다
+## 🧭 Version Highlights
 
----
-
-## 🏷 Versioning
-
-- **v0.1.0**: PoC (Streamlit 기반)
-- **v0.2.0**: Production MVP  
-  - React + FastAPI 전환  
-  - 세션 기반 상담 구조 도입
+- **v0.1.0**: Production MVP scaffold
+- **v0.2.0**: Session-based chat flow
+- **v0.3.0**: UX improvements & chat history UI
+- **v0.4.0**: Backend-driven session history with SQLite
 
 ---
 
 ## 🔮 Next Steps
 
-- v0.3.0
-  - 대화 히스토리 조회 API
-  - 스트리밍 응답(SSE)
-  - UX 개선 (로딩, 에러 처리)
+### v0.4.1
+- Actual LLM integration (`call_llm`)
+- Error handling & loading UX
+
+### v0.5.0
+- RAG with statutes and case law
+- History-aware response generation
+- Case-based legal consultation model
+
+---
+
+## 📄 Notes
+
+- This project emphasizes **architecture and evolution**, not just feature delivery.
+- v0.4.0 focuses on backend history design and service-grade structure.
+
+---
+
+## 📜 License
+
+MIT

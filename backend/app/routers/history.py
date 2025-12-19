@@ -1,8 +1,19 @@
 """
 routers/history.py
-- v0.4.0 대화 히스토리 API
-  - GET  /api/conversations/{session_id}/messages
-  - POST /api/conversations/{session_id}/messages
+
+대화 히스토리 조회/저장을 위한 API 라우터 (v0.4.0 기준)
+
+엔드포인트
+- GET  /conversations/{session_id}/messages
+  - 특정 대화방 메시지 조회
+  - limit(1~100), before_seq(페이지네이션) 지원
+- POST /conversations/{session_id}/messages
+  - 특정 대화방에 메시지 저장 (role=user/assistant 공용)
+
+구현 특징
+- repository.chat의 list_messages / append_message를 호출하여
+  데이터 접근 계층을 라우터에서 직접 사용
+- 응답 모델은 schemas.chat의 Pydantic 모델을 사용
 """
 
 

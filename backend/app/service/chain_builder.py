@@ -1,19 +1,24 @@
 """
-########################################################################
-chain_builder.py
+service/chain_builder.py
 
-LLM 대화 체인(conversational chain)을 생성하는 빌더 모듈입니다.
+LangChain 기반의 대화형 LLM 체인(conversational chain)을 구성/생성하는 빌더 모듈
 
-역할:
-- OpenAI 모델(ChatOpenAI)과 프롬프트를 조합해 Runnable 체인을 구성합니다.
-- session_id 기반으로 대화 히스토리를 유지할 수 있도록 RunnableWithMessageHistory를 적용합니다.
-- llm_service.py에서는 build_conversational_chain()만 호출해 체인을 받아 사용합니다.
+주요 역할
+- ChatPromptTemplate + ChatOpenAI + OutputParser(StrOutputParser)를 조합해 Runnable 체인을 생성
+- RunnableWithMessageHistory를 적용하여 session_id 기반 대화 히스토리를 유지
+- keyword_dictionary.json(선택)을 로드해 시스템 프롬프트에 참고 힌트를 제공
 
-주의:
-- 현재 히스토리는 메모리(dict)에 저장되는 MVP 방식입니다. (프로덕션에선 Redis/DB 권장)
-- 키/개인정보는 로그에 남기지 않도록 주의합니다.
-########################################################################
+히스토리 저장 방식 (현재)
+- in-memory dict(_SESSION_STORE) + ChatMessageHistory 사용 (MVP)
+- 서버 재시작/스케일아웃 시 히스토리 유실 가능
+  → 프로덕션에서는 DB/Redis 등 영속 저장소 연동 권장
+
+사용 예
+- llm_service.py에서 build_conversational_chain()로 체인을 받은 뒤
+  chain.stream({"input": message}, config={"configurable": {"session_id": session_id}})
+  형태로 호출
 """
+
 
 from __future__ import annotations
 

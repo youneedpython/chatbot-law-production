@@ -88,7 +88,7 @@ def get_history(session_id: str) -> List[Message]:
     return SESSION_STORE.get(session_id, [])
 
 
-def ask_llm(message: str, session_id: Optional[str] = None):
+def ask_llm(message: str, session_id: Optional[str] = None) -> tuple[str, str]:
     """
     LLM에게 질문을 전달하고 답변과 session_id를 반환합니다.
 

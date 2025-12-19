@@ -16,6 +16,7 @@ import { useNavigate, useParams } from "react-router-dom";
 
 import ChatInput from "./components/ChatInput";
 import ChatList from "./components/ChatList";
+import { apiFetch } from "./api/client"
 
 import "./App.css";
 
@@ -85,8 +86,8 @@ export default function App() {
 
     (async () => {
       try {
-        const res = await fetch(
-          `/api/conversations/${sessionId}/messages?limit=100`,
+        const res = await apiFetch(
+          `/conversations/${sessionId}/messages?limit=100`,
           { signal: controller.signal}
         );
 
@@ -124,7 +125,7 @@ export default function App() {
     setLoading(true);
 
     try {
-      const res = await fetch(`/api/chat/${sessionId}`, {
+      const res = await apiFetch(`/chat/${sessionId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message }),

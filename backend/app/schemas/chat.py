@@ -20,7 +20,7 @@ schemas/chat.py
 
 
 from datetime import datetime
-from typing import Literal, List, Optional
+from typing import Literal, List
 
 from pydantic import BaseModel, Field
 

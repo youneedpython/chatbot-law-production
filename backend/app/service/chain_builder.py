@@ -1,22 +1,19 @@
 """
 service/chain_builder.py
 
-LangChain 기반의 대화형 LLM 체인(conversational chain)을 구성/생성하는 빌더 모듈
+LangChain 기반 LLM 체인(conversational chain)을 생성하는 빌더 모듈 (stateless)
 
 주요 역할
-- ChatPromptTemplate + ChatOpenAI + OutputParser(StrOutputParser)를 조합해 Runnable 체인을 생성
-- RunnableWithMessageHistory를 적용하여 session_id 기반 대화 히스토리를 유지
+- ChatPromptTemplate + ChatOpenAI + StrOutputParser를 조합해 Runnable 체인을 생성
 - keyword_dictionary.json(선택)을 로드해 시스템 프롬프트에 참고 힌트를 제공
 
-히스토리 저장 방식 (현재)
-- in-memory dict(_SESSION_STORE) + ChatMessageHistory 사용 (MVP)
-- 서버 재시작/스케일아웃 시 히스토리 유실 가능
-  → 프로덕션에서는 DB/Redis 등 영속 저장소 연동 권장
+중요 설계(현재)
+- 이 체인은 히스토리를 내부에 저장하지 않는(stateless) 구조
+- 대화 히스토리(컨텍스트)는 service/llm_service.py가 DB에서 조회하여
+  입력 텍스트/메시지 형태로 구성해 체인에 전달
 
-사용 예
-- llm_service.py에서 build_conversational_chain()로 체인을 받은 뒤
-  chain.stream({"input": message}, config={"configurable": {"session_id": session_id}})
-  형태로 호출
+호출 예
+- chain.stream({"input": "<history + user message>"})
 """
 
 
@@ -24,32 +21,16 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Dict
 
 from langchain_openai import ChatOpenAI
 from langchain_core.output_parsers import StrOutputParser
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain_core.runnables.history import RunnableWithMessageHistory
-from langchain_community.chat_message_histories import ChatMessageHistory
+from langchain_core.prompts import ChatPromptTemplate
 
 from app.core.config import OPENAI_MODEL
 from app.core.logger import get_logger
 
 
 logger = get_logger("chatbot-law-prod.chain_builder")
-
-# -----------------------------------------------------------------------------
-# In-memory session store (MVP)
-# -----------------------------------------------------------------------------
-_SESSION_STORE: Dict[str, ChatMessageHistory] = {}
-
-
-def _get_history(session_id: str) -> ChatMessageHistory:
-    """session_id 별 대화 히스토리 객체를 반환합니다 (메모리 저장)."""
-    if session_id not in _SESSION_STORE:
-        _SESSION_STORE[session_id] = ChatMessageHistory()
-    return _SESSION_STORE[session_id]
-
 
 # -----------------------------------------------------------------------------
 # Keyword dictionary (optional)
@@ -102,38 +83,30 @@ def _build_system_prompt(keyword_dictionary: dict) -> str:
 # -----------------------------------------------------------------------------
 def build_conversational_chain():
     """
-    대화형 체인을 생성하여 반환합니다.
+    stateless 대화 체인을 생성해 반환합니다.
 
-    반환되는 객체는:
-    - .invoke() / .stream() 등을 사용할 수 있고,
-    - RunnableWithMessageHistory로 감싸져 있어 session_id 기반 히스토리를 유지합니다.
+    - 이 체인은 히스토리를 내부에 저장하지 않습니다.
+    - 입력으로 받은 {"input": "<history + user message>"} 텍스트만을 기반으로 응답을 생성합니다.
+    - 대화 히스토리 구성(DB 조회 및 컨텍스트 문자열 조립)은 llm_service.py에서 담당합니다.
 
-    llm_service.py에서:
-    chain.stream({"input": message}, config={"configurable": {"session_id": session_id}})
-    형태로 호출하면 됩니다.
+    사용 예:
+        chain = build_conversational_chain()
+        for token in chain.stream({"input": input_text}):
+            ...
     """
     keyword_dictionary = load_keyword_dictionary()
     system_prompt = _build_system_prompt(keyword_dictionary)
 
+    ## messages 전체를 통째로 받는 프롬프트로 전환
+    ## llm_service에서 DB history를 포함한 messages를 만들어 전달할 것
     prompt = ChatPromptTemplate.from_messages(
         [
             ("system", system_prompt),
-            MessagesPlaceholder(variable_name="history"),
             ("human", "{input}"),
         ]
     )
 
-    llm = ChatOpenAI(model=OPENAI_MODEL)
+    llm = ChatOpenAI(model=OPENAI_MODEL, temperature=0.3)
 
     # prompt -> llm -> 문자열 파서
-    core_chain = prompt | llm | StrOutputParser()
-
-    # session_id 기반 history 연결
-    chain_with_history = RunnableWithMessageHistory(
-        core_chain,
-        _get_history,
-        input_messages_key="input",
-        history_messages_key="history",
-    )
-
-    return chain_with_history
+    return prompt | llm | StrOutputParser()

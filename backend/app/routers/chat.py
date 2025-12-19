@@ -26,6 +26,7 @@ from openai import OpenAI
 from app.db import get_db
 from app.repository.chat import append_message
 from app.schemas.chat_request import ChatRequest
+from app.service.llm_service import ask_llm
 
 from app.core.config import OPENAI_API_KEY, OPENAI_MODEL
 
@@ -36,24 +37,6 @@ router = APIRouter(
     prefix="/chat",
     tags=["Chat"],
 )
-
-
-def call_llm(user_message: str) -> str:
-    """
-    실제 서비스에서는 여기서 OpenAI / LLM 호출
-    지금은 예시용 더미 구현
-    """
-
-    resp = client.chat.completions.create(
-        model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
-        messages=[
-            {"role": "system", "content": "당신은 전세사기 피해자를 돕는 법률 상담 도우미입니다. 간결하고 단계적으로 안내하세요."},
-            {"role": "user", "content": user_message},
-        ],
-        temperature=0.4,
-    )
-    
-    return resp.choices[0].message.content.strip()
 
 
 @router.post("/{session_id}")
@@ -73,8 +56,8 @@ def chat(
         content=payload.message,
     )
 
-    ## 2. 호출
-    answer = call_llm(payload.message)
+    ## 2. LLM 호출 (service로 위임)
+    answer, _ = ask_llm(message=payload.message, session_id=session_id)
 
     ## 3. assistant 메시지 저장
     append_message(

@@ -1,46 +1,34 @@
 """
 routers/chat.py
-- v0.4.0 /chat/{session_id}
-- History API를 사용하는 오케스트레이션 엔드포인트
+
+채팅 응답 생성용 엔드포인트 라우터 (v0.4.1 기준)
+
+엔드포인트
+- POST /chat/{session_id}
+  1) 사용자 메시지 DB 저장(repository.append_message)
+  2) LLM 응답 생성(service.ask_llm)
+  3) 어시스턴트 메시지 DB 저장(repository.append_message)
+  4) answer 반환
+
+원칙
+- 라우터는 HTTP/검증/저장/응답만 담당
+- LLM 호출 및 프롬프트 구성은 service 계층에서만 처리
 """
 
-import os
-from dotenv import load_dotenv
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from openai import OpenAI
 
 from app.db import get_db
 from app.repository.chat import append_message
 from app.schemas.chat_request import ChatRequest
+from app.service.llm_service import ask_llm
 
-
-load_dotenv()
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 router = APIRouter(
-    prefix="/api/chat",
+    prefix="/chat",
     tags=["Chat"],
 )
-
-
-def call_llm(user_message: str) -> str:
-    """
-    실제 서비스에서는 여기서 OpenAI / LLM 호출
-    지금은 예시용 더미 구현
-    """
-
-    resp = client.chat.completions.create(
-        model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
-        messages=[
-            {"role": "system", "content": "당신은 전세사기 피해자를 돕는 법률 상담 도우미입니다. 간결하고 단계적으로 안내하세요."},
-            {"role": "user", "content": user_message},
-        ],
-        temperature=0.4,
-    )
-    
-    return resp.choices[0].message.content.strip()
 
 
 @router.post("/{session_id}")
@@ -60,8 +48,8 @@ def chat(
         content=payload.message,
     )
 
-    ## 2. 호출
-    answer = call_llm(payload.message)
+    ## 2. LLM 호출 (service로 위임)
+    answer, _ = ask_llm(db=db, message=payload.message, session_id=session_id)
 
     ## 3. assistant 메시지 저장
     append_message(

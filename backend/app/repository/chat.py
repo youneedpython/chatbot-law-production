@@ -1,10 +1,21 @@
 """
 repository/chat.py
-- v0.4.0 대화 히스토리 CRUD (Conversation / Message)
-- 핵심 기능:
-  - get_or_create_conversation(session_id)
-  - append_message(conversation_id, role, content) -> seq 자동 증가
-  - list_messages(conversation_id, limit, before_seq)
+
+대화 히스토리(Conversation / Message) 저장 및 조회를 담당하는 Repository 계층.
+
+핵심 기능
+- get_or_create_conversation(session_id): 세션 단위 대화방 조회/생성
+- append_message(conversation_id, role, content): 메시지 저장 + seq 자동 증가 + updated_at 갱신
+- list_messages(conversation_id, limit, before_seq): 최근 메시지 조회(정렬 안정화 포함)
+
+조회/정렬 규칙
+- DB에서 seq 내림차순으로 최근 limit개를 조회한 뒤,
+  애플리케이션에서 seq 오름차순으로 재정렬하여 반환
+  (대화 컨텍스트 재구성 시 순서 안정성 확보)
+
+주의/확장 포인트
+- seq는 max(seq)+1 방식이라 동시성 환경에서는 경쟁 조건(race condition)이 발생할 수 있음
+  (필요 시 트랜잭션 잠금, DB 레벨 증가 전략, 또는 재시도 정책으로 보완)
 """
 
 
@@ -15,11 +26,17 @@ from typing import Literal, Optional, List
 
 from sqlalchemy import select, func
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
 from app.models.chat import Conversation, Message
+from app.core.logger import get_logger
 
+
+logger = get_logger('chatbot-law-prod.repository.chat')
 
 Role = Literal["user", "assistant"]
+MAX_RETRIES = 5
+
 
 def get_or_create_conversation(db: Session, session_id:str) -> Conversation:
     """
@@ -62,27 +79,42 @@ def append_message(
     ) -> Message:
     """
     메시지를 DB에 append한다.
-    - seq는 자동 증가
+    - seq는 max(seq)+1로 계산
+    - 동시성 환경에서 (conversation_id, seq) 유니크 충돌이 날 수 있어 재시도 로직 포함
     - conversation.updated_at 갱신
     """
     convo = get_or_create_conversation(db, conversation_id)
 
-    seq = _next_seq(db, conversation_id)
-    msg = Message(
-        conversation_id=conversation_id,
-        role=role,
-        content=content,
-        seq=seq,
-        created_at=datetime.utcnow()
-    )
-    db.add(msg)
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            seq = _next_seq(db, conversation_id)
+            msg = Message(
+                conversation_id=conversation_id,
+                role=role,
+                content=content,
+                seq=seq,
+                created_at=datetime.utcnow()
+            )
+            db.add(msg)
 
-    convo.updated_at = datetime.utcnow()
+            convo.updated_at = datetime.utcnow()
 
-    db.commit()
-    db.refresh(msg)
+            db.commit()
+            db.refresh(msg)
 
-    return msg
+            return msg
+        except IntegrityError as e:
+            ## (conversation_id, seq) 유니크 충돌 가능성
+            db.rollback()
+
+            logger.warning("IntegrityError on append_message attempt=%d: %s", attempt, e)
+
+            if attempt == MAX_RETRIES:
+                ## 재시도 초과면 예외를 다시 올려서 상위에서 처리
+                raise
+
+            ## 다음 루프에서 다시 max(seq)+1 계산 후 재시도
+            continue
 
 
 def list_messages(

@@ -1,9 +1,28 @@
 """
 models/chat.py
-- v0.4.0 대화 히스토리용 모델
-  - Conversation: session_id 단위 대화방
-  - Message: user/assistant 메시지 (seq로 정렬 안정화)
+
+대화 히스토리 저장을 위한 ORM 모델 정의 파일 (v0.4.0 기준).
+
+구성:
+- Conversation: 하나의 대화 세션(채팅방)을 나타내는 엔티티
+- Message: 대화 내 개별 메시지(user / assistant)
+
+설계 특징:
+- Conversation은 session_id(UUID 문자열)를 Primary Key로 사용
+- Message는 seq 필드를 통해 대화 내 순서를 명시적으로 보장
+- (conversation_id, seq) 유니크 인덱스로 순서 중복 및 경합 방지
+- 최신 대화 조회 성능 향상을 위해 updated_at 인덱스 적용
+- cascade="all, delete-orphan"으로 대화 삭제 시 메시지 자동 정리
+
+의도:
+- LLM 호출(call_llm) 시 이전 대화 컨텍스트를 안정적으로 재구성
+- pagination, history 조회, 재질문 시나리오를 고려한 구조
+- v0.4.x 이후 RAG, 요약, 재질문 확장에 대응 가능
+
+제약:
+- role은 user / assistant 만 허용 (system 메시지는 v0.4.0에서 제외)
 """
+
 
 
 from __future__ import annotations

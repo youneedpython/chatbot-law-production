@@ -8,3 +8,7 @@
 # Env
 .env
 **/.env
+
+
+# file
+.zip

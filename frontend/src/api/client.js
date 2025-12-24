@@ -2,19 +2,20 @@
 // Centralized API client for chatbot-law-prod
 
 
+// export async function apiFetch(path, options = {}) {
+    //     return fetch(`/api${path}`, {
+        //         headers: {"Content-Type": "application/json", ...(options.headers || {}) },
+        //         ...options,
+        //     });
+// }
+        
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
+console.log('API_BASE_URL >> ', API_BASE_URL);
+
 export async function apiFetch(path, options = {}) {
-    const res = await fetch(`/api${path}`, {
-        headers: { "Content-Type": "application/json", ...(options.headers || {})},
+    return fetch(`${API_BASE_URL}${path}`, {
+        headers: {"Content-Type": "application/json", ...(options.headers || {}) },
         ...options,
     });
-
-    // Fast fail with readable error
-    if (!res.ok) {
-        const text = await res.text().catch(() => "");
-        throw new Error(`HTTP ${res.status} ${res.statusText}: ${text}`);
-    }
-
-    // Most endpoints return JSON
-    const ct = res.headers.get("content-type") || "";
-    return ct.includes("application/json") ? res.json() : res.text();    
 }

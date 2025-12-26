@@ -28,9 +28,10 @@ from dotenv import load_dotenv
 # ======================================
 # Environment configuration
 # ======================================
-# 로컬 개발 환경에서만 .env 로드
-if os.getenv('ENV', 'local') == 'local':
-    load_dotenv()
+# 로컬 개발: .env가 존재하면 로드 (prod/eb에서는 보통 .env 없음)
+load_dotenv()
+
+ENV = os.getenv('ENV', 'local')
 
 
 # ======================================
@@ -54,4 +55,5 @@ LANGSMITH_API_KEY = os.getenv('LANGSMITH_API_KEY')
 # ======================================
 # Database settings
 # ======================================
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./test.db")
+# DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./test.db")
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./dev.db")

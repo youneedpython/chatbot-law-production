@@ -16,13 +16,13 @@ SQLAlchemy 엔진/세션(SessionLocal) 생성과 FastAPI 의존성 주입(get_db
 
 from __future__ import annotations
 
-import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.core.config import DATABASE_URL
 
 
+## SQLite 전용 옵션 분기
 ## SQLite는 check_same_thread 옵션이 필요합니다.
 connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
 
@@ -31,6 +31,8 @@ engine = create_engine(
     echo=False,
     future=True,
     connect_args=connect_args,
+    pool_pre_ping=True, ## 죽은 커넥션 자동 감지
+    pool_recycle=300,   ## 5분마다 재활용, NAT/로드밸런서 환경에서 유리
 )
 
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)

@@ -18,6 +18,7 @@ backend/**/*.db
 *.sqlite
 *.sqlite3
 
+test.db
 init_db.py
 
 ############################

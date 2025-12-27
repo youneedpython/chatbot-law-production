@@ -18,6 +18,7 @@ backend/**/*.db
 *.sqlite
 *.sqlite3
 
+init_db.py
 
 ############################
 # Environment files

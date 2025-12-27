@@ -65,7 +65,7 @@ async def request_id_middleware(request: Request, call_next):
         duration_ms = (time.perf_counter() - start) * 1000
         ## logger 포맷에 request_id가 자동 포함됨
         logger.info(
-            f'{request.method} {request.url.path} complated in {duration_ms: .2f}ms'
+            f'{request.method} {request.url.path} completed in {duration_ms: .2f}ms'
         )
         ## 다음 요청에 섞이지 않게 초기화
         set_request_id(None)

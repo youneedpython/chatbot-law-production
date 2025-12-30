@@ -1,228 +1,159 @@
-# chatbot-law-prod
+# Chatbot Law – Production
 
-전세사기 피해자를 위한 **세션 기반 법률 상담 챗봇 (Service-ready Backend)** 프로젝트입니다.
+전세사기 피해자를 위한 **법률 상담 AI 챗봇 (Production Backend)**  
+FastAPI 기반 백엔드와 React 프론트엔드로 구성된 **실서비스 지향 프로젝트**입니다.  
 
-본 프로젝트는 PoC 수준을 넘어,  
-**관측가능성(Observability)·운영 가능성·점진적 확장**을 고려한  
-**실서비스 지향 백엔드 아키텍처**를 목표로 합니다.
-
----
-
-## 📌 Project Vision
-
-- 전세사기 피해자가 **상담 맥락을 유지한 채** 법률 정보를 탐색
-- Frontend 상태 의존 → **Backend를 Source of Truth**로 전환
-- **Request Tracing / Logging / Health Check**를 포함한 운영 기반 확보
-- 향후 **RAG(법령·판례)**, **케이스 관리**, **운영 지표**로 확장
+본 프로젝트는 단순한 LLM 데모가 아닌,  
+**운영 환경에서 안정적으로 동작하는 API 서버 구축**을 목표로 설계되었습니다.
 
 ---
 
-## 🏗️ Architecture Overview (v0.4.2)
+## 📌 Project Overview
+
+This release represents a production-stable baseline with verified
+dev/prod parity and database migration applied.  
+이번 릴리스는 dev와 prod 환경의 동기화가 검증되었고, 데이터베이스 마이그레이션이 적용된 안정적인 프로덕션 기준선입니다.
+
+- **Current Version:** v0.4.2
+- **Deployment:** AWS Elastic Beanstalk (Production)
+- **Focus:** Observability · 안정성 · 운영 기준 설계
+- **RAG / CI/CD:** 차기 버전에서 확장 예정
+
+
+
+---
+
+## 🧱 Architecture
+
+### Current (v0.4.2)
 
 ```text
-[ React (Vite) ]
-        │
-        ▼
-[ FastAPI Backend ]
-        │
-        ├─ Chat / Conversation API
-        ├─ Session-based History (SQLite)
-        ├─ Request ID Middleware
-        ├─ Structured Logging
-        ├─ Health / Readiness Endpoints
-        │
-        ▼
-[ SQLite Database ]
+Frontend
+└─ S3 + CloudFront
+   ↓
+Backend
+└─ Application Load Balancer (ALB)
+   └─ Elastic Beanstalk
+      └─ RDS (PostgreSQL, migrated from SQLite)
+``` 
+
+### Planned
+
+```text
+Backend Extensions
+└─ RAG (Vector Store, Embeddings)
 ```
-
----
-### 핵심 변화 (v0.4.2)
-
-- 모든 요청에 **request_id 기반 추적 가능**
-- 로그 → **운영 관점에서 해석 가능한 구조**로 전환
-- 배포/운영을 고려한 **health / readiness 분리**
-
 ---
 
-## 🧱 Tech Stack
-
-### Frontend
-- React + Vite
-- React Router (session-based routing)
-- Fetch API
+## 🛠 Tech Stack
 
 ### Backend
+- Python 3.11
 - FastAPI
+- Uvicorn
 - SQLAlchemy
-- SQLite
-- Custom Middleware (Request ID)
-- Structured Logging (JSON-like)
+- Alembic
+- LangChain (LLM orchestration)
+- OpenAI API
 
-### LLM
-- OpenAI (integration planned)
-- LLM orchestration layer 분리 완료
-- RAG 연동은 v0.5.x에서 도입
+### Frontend
+- React
+- Vite
+- Fetch API
 
-
-## 🚀 Key Features (up to v0.4.2)
-
-### 1. Session-based Chat
-
-- URL 기반 session_id (`/chat/{session_id}`)
-- 새로고침 / 재접속 시 대화 유지
-- `conversation_id == session_id` 설계
+### Infrastructure
+- AWS Elastic Beanstalk (EC2, ALB)
+- S3 + CloudFront
+- LangSmith (Tracing)
 
 ---
 
-### 2. Backend-driven Conversation History (v0.4.0)
+## 🔎 Production Networking & Observability
 
-- SQLite 기반 대화 히스토리 영속화
-- Frontend(localStorage) → Backend(DB) 전환
-- 멀티 디바이스 확장 가능한 구조
+### ✅ Request ID 기반 추적
+- 모든 요청에 `X-Request-ID` 전달 또는 자동 생성
+- 로그, 응답 헤더, 내부 처리 전 과정에서 동일 ID 사용
+- 운영 환경 디버깅 및 장애 추적 가능
 
----
-
-### 3. Request ID Middleware (v0.4.2)
-
-- 모든 요청에 `X-Request-ID` 자동 부여
-- 클라이언트가 전달한 ID는 그대로 전파
-- 응답 헤더 + 로그에 동일 ID 유지
-
-```text
-Request
- └─ X-Request-ID
-      ├─ API Logs
-      ├─ LLM Invocation Logs
-      └─ Error Logs
-```
-- 👉 문제 추적 / 장애 분석 / 운영 대응 가능
-
----
-
-### 4. Structured Logging (v0.4.2)
-
-- `print()` 제거 → 프로젝트 로거 통합
-- request_id 중심 로그 포맷
-- API / Service / Repository 계층 로그 분리
-
-예:
-
-```text
-[request_id=abc123] chat.create_message.success
+```bash
+curl -X POST http://localhost:8000/api/chat/1234 \
+  -H "Content-Type: application/json" \
+  -H "X-Request-ID: test-request-id-001" \
+  -d '{"message":"전세사기 피해자 설명해줘"}'
 ```
 
 ---
 
-### 5. Health & Readiness Endpoints (v0.4.2)
+## ❤️ Health Check
 
-```http
+```
 GET /health
 ```
 
 - 서비스 기본 생존 상태 확인
-- (v0.4.3 예정) `/health/liveness`, `/health/readiness` 분리
+- 로드밸런서 / CloudFront 헬스 체크 용도
+
+### Planned Endpoints (Future Enhancement)
+| Endpoint              | Description                     |
+|-----------------------|---------------------------------|
+| `/health/liveness`    | 프로세스 생존 여부               |
+| `/health/readiness`   | DB / 외부 의존성 준비 상태       |
+
 
 ---
 
-## 🧱 Tech Stack
+## 📚 API Documentation
+
+- Swagger UI: `/docs`
+- OpenAPI spec: `/openapi.json`
+
+---
+
+## ⚙️ Environment Variables
+
+### Backend
+
+| Variable                | Description            |
+|-------------------------|------------------------|
+| `APP_ENV`               | Runtime environment (`dev` / `prod`) |
+| `OPENAI_API_KEY`        | OpenAI API key         |
+| `OPENAI_MODEL`          | LLM model name         |
+| `DATABASE_URL`          | Database connection URL |
+| `LANGCHAIN_TRACING_V2`  | Enable LangChain tracing (`true` / `false`) |
+| `LANGCHAIN_PROJECT`     | LangSmith project name |
+| `LANGSMITH_API_KEY`     | LangSmith API key      |
+
 
 ### Frontend
-- React + Vite
-- React Router (session-based routing)
-- Fetch API
+```env
+VITE_API_BASE_URL=/api
+```
+
+---
+
+## 🌐 CORS & Strategy
+
+### Local
+- Vite dev server /api proxy 사용
+- 브라우저 기준 same-origin → CORS 문제 없음
+
+### Production
+- CloudFront / ALB 기준 /api 유지
+- Backend에서 명시적 CORS 정책 적용
+- Frontend–Backend origin 분리를 고려한 설계
+
+---
+
+## 🚀 Local Development
 
 ### Backend
-- FastAPI
-- SQLAlchemy
-- SQLite
-- Custom Middleware (Request ID)
-- Structured Logging
-
-### LLM
-- OpenAI (integration planned)
-- LLM orchestration layer 분리 완료
-- Vector Store / RAG 연동은 v0.5.x에서 도입
-
----
-
-## 📡 API Endpoints
-
-### Health
-
-```http
-GET /health
-```
-
-Response:
-```json
-{
-  "status": "ok",
-  "service": "chatbot-law-prod"
-}
-```
-
----
-
-### Chat
-
-```http
-POST /api/chat/{session_id}
-```
-
-- 사용자 메시지 저장
-- LLM 호출
-- 응답 메시지 저장 후 반환
-
----
-
-### Conversation History
-
-```http
-GET /api/conversations/{session_id}/messages
-```
-
-Response:
-```json
-{
-  "messages": [
-    { "role": "user", "content": "..." },
-    { "role": "assistant", "content": "..." }
-  ],
-  "has_more": false
-}
-```
-
----
-
-## 🗄️ Database Schema (Simplified)
-
-### conversations
-- id (session_id)
-- created_at
-- updated_at
-
-### messages
-- conversation_id
-- seq
-- role (user / assistant)
-- content
-- created_at
-
----
-
-## ▶️ How to Run (Development)
-
-### Backend
-
 ```bash
 cd backend
 pip install -r requirements.txt
-python -m app.init_db
-uvicorn app.main:app --reload
+uvicorn app.main:app --reload --port 8000
 ```
 
 ### Frontend
-
 ```bash
 cd frontend
 npm install
@@ -231,43 +162,49 @@ npm run dev
 
 ---
 
-## 🧭 Version Highlights
+## 📦 Deployment
 
-- **v0.1.0**: Production MVP scaffold
-- **v0.2.0**: Session-based chat flow
-- **v0.3.0**: UX & chat history UI
-- **v0.4.0**: Backend-driven history (SQLite)
-- **v0.4.1**: Repository 안정화 & 동시성 보강
-- **v0.4.2**: **Observability (request_id, logging, health)** ✅
+### Frontend
+- S3 Static Website Hosting
+- CloudFront CDN distribution
 
----
+### Backend
+- AWS Elastic Beanstalk
+- Application Load Balancer (ALB)
 
-## 🔮 Next Steps
-
-### v0.4.3
-
-- API / concurrency smoke tests
-- 운영 Runbook 문서화
-- 기본 배포 검증
+### Database
+- PostgreSQL
 
 ---
 
-### v0.5.x
-
-- Vector Store + Embedding 기반 RAG
-- 법령/판례 검색 파이프라인
-- History-aware response generation
-- 운영 지표(Log → Metric) 확장
+## 📂 Repository Structure
+``` text
+.
+├── backend
+│   ├── app
+│   ├── alembic
+│   └── ...
+├── frontend
+│   ├── src
+│   └── ...
+├── README.md
+└── CHANGELOG.md
+```
 
 ---
 
-## 📄 Notes
+## 🧭 Roadmap
 
-- 이 프로젝트는 **기능 나열이 아닌 “서비스로 가는 진화 과정”**을 기록합니다.
-- v0.4.x는 **배포 가능한 안정성 확보**
-- v0.5.x부터 **법률 도메인 지능화(RAG)**가 본격 도입됩니다.
+### Next
+- CI/CD automation
+- Deployment pipeline stabilization
+
+### Future
+- RAG (Vector Store + Retrieval)
+- Authentication / Rate limiting
 
 ---
 
-## 📜 License
-MIT
+## 📄 License
+
+Internal / Portfolio Project

@@ -34,37 +34,50 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Index,
+    UniqueConstraint,
     Integer,
     String,
     Text,
+    func,
+    CheckConstraint,  ## role 제약에 사용
 )
 
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .base import Base
 
+
 class Conversation(Base):
     __tablename__ = "conversations"
 
     ## session_id를 그대로 PK로 사용 (UUID 문자열)
-    id: Mapped[str] = mapped_column(String(64), primary_key=True, index=True)
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
 
+    ## Postgres 운영에서는 DB가 시간을 책임지게 하는 편이 안정적
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=datetime.utcnow(), nullable=False
+        DateTime(timezone=True), 
+        # default=datetime.utcnow, 
+        server_default=func.now(),
+        nullable=False
     )
 
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=datetime.utcnow(), nullable=False
+        DateTime(timezone=True), 
+        # default=datetime.utcnow, 
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
     )
 
     ## 최신순 조회/정렬에 유용
     __table_args__ = (
-        Index('ix_conversations_updated_at', 'updated_at'),
+        Index("ix_conversations_updated_at", "updated_at"),
     )
 
     messages: Mapped[List["Message"]] = relationship(
         back_populates="conversation",
         cascade="all, delete-orphan",
         order_by="Message.seq",
+        passive_deletes=True,
     )
 
 
@@ -76,7 +89,7 @@ class Message(Base):
     conversation_id: Mapped[str] = mapped_column(
         String(64),
         ForeignKey("conversations.id", ondelete="CASCADE"),
-        index=True,
+        index=True,  
         nullable=False,
     )
 
@@ -89,18 +102,24 @@ class Message(Base):
     seq: Mapped[int] = mapped_column(Integer, nullable=False)
 
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=datetime.utcnow(), nullable=False
+        DateTime(timezone=True), 
+        # default=datetime.utcnow, 
+        server_default=func.now(),
+        nullable=False,
     )
 
     __table_args__ = (
         ## 같은 대화창에서 seq 중복 방지
-        Index("ux_messages_conversation_seq", "conversation_id", "seq", unique=True),
+        # Index("ux_messages_conversation_seq", "conversation_id", "seq", unique=True),
+        UniqueConstraint("conversation_id", "seq", name="uq_messages_conversation_seq"),
         ## 조회 성능 향상용 인덱스
         Index("ix_messages_conversation_created_at", "conversation_id", "created_at"),
+
+        ## role 값 DB에서 강제
+        # CheckConstraint("role in ("user","assistant")", name="ck_messages_role"),
     )
 
-    conversation: Mapped["Conversation"] = relationship(back_populates="messages")
-
-
-
+    conversation: Mapped["Conversation"] = relationship(
+        back_populates="messages",
+    )
     

@@ -1,14 +1,64 @@
-# Node
-**/node_modules/
+############################
+# Python (backend)
+############################
 
 # Python
 **/__pycache__/
 **/*.pyc
 
-# Env
+
+############################
+# Backend runtime artifacts
+############################
+
+# SQLite DB (local/dev)
+backend/*.db
+backend/**/*.db
+*.db
+*.sqlite
+*.sqlite3
+
+test.db
+init_db.py
+
+############################
+# Environment files
+############################
+# NEVER commit secrets
 .env
+.env.*
 **/.env
+**/.env.*
+
+# But keep examples
+!.env.example
+!backend/.env.example
 
 
-# file
-.zip
+############################
+# Node / Vite (frontend)
+############################
+node_modules/
+**/node_modules/
+
+# Vite / React build output
+frontend/dist/
+**/dist/
+
+
+############################
+# Elastic Beanstalk
+############################
+# EB CLI local folder (배포 설정/캐시)
+.elasticbeanstalk/
+.ebextensions/*.bak
+
+
+############################
+# Archives / Upload bundles
+############################
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+

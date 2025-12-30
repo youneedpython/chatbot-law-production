@@ -17,6 +17,7 @@ FastAPI 애플리케이션 엔트리 포인트
 import time
 
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import Response
 
 from app.routers import chat, history, health
@@ -30,10 +31,22 @@ from app.core.logger import get_logger
 
 logger = get_logger("Chatbot-law-prod.middleware.request_id")
 
-
 ## app 객체 생성
 app = FastAPI(title="Chatbot Law API")
 
+## CORS
+origins = [
+    'https://d19b4mxgdd1vkt.cloudfront.net',  ## frontend domain
+    # 'https://api-chatbot-law-dev.store',          ## 커스텀 도메인
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=False, 
+    allow_methods=['*'],
+    allow_headers=['*'],
+)
 
 ## 요청/응답을 가로채는 공통처리
 @app.middleware("http")
@@ -52,7 +65,7 @@ async def request_id_middleware(request: Request, call_next):
         duration_ms = (time.perf_counter() - start) * 1000
         ## logger 포맷에 request_id가 자동 포함됨
         logger.info(
-            f'{request.method} {request.url.path} complated in {duration_ms: .2f}ms'
+            f'{request.method} {request.url.path} completed in {duration_ms: .2f}ms'
         )
         ## 다음 요청에 섞이지 않게 초기화
         set_request_id(None)

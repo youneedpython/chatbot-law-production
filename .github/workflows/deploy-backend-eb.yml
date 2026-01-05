@@ -1,0 +1,139 @@
+name: Deploy to Elastic Beanstalk (ZIP, OIDC)
+
+## 1. 트리거 & 권한 ###########################
+## dev 또는 prod에 push되면 자동 배포
+on:
+  push:
+    branches: [ "dev", "main" ]
+    paths:
+      - "backend/**"
+      - ".github/workflows/deploy-backend-eb.yml"
+
+permissions:
+  id-token: write   # ✅ OIDC 필수
+  contents: read
+
+
+## 2. 트리거 & 실행 제어 ###################
+concurrency:
+  group: backend-eb-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref_name == 'main' && 'prod' || 'dev' }}
+
+    env:
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+      EB_APP_NAME: ${{ secrets.EB_APP_NAME }}
+      EB_ENV_NAME: ${{ secrets.EB_ENV_NAME }}
+      S3_BUCKET: ${{ secrets.S3_BUCKET }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      ## ✅ Github Actions가 OIDC 토큰 발급
+      ## AWS STS에 전달
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Verify AWS identity
+        run: aws sts get-caller-identity
+
+      ## ✅ ZIP 파일 만들기 
+      - name: Create source bundle (ZIP) backend contents only
+        run: |
+          set -e
+          ZIP_NAME="backend-${{ github.ref_name }}-${{ github.sha }}.zip"
+          echo "ZIP_NAME=$ZIP_NAME" >> $GITHUB_ENV
+
+          cd backend
+
+          zip -r "../$ZIP_NAME" . \
+            -x ".env*" \
+            -x "test.db" \
+            -x "**/__pycache__/*" \
+            -x "**/*.pyc" \
+            -x "**/.pytest_cache/*" \
+            -x "venv/*" \
+            -x ".venv/*"
+
+          cd ..
+
+          ls -lh "$ZIP_NAME"
+
+      ## ✅ Procfile 존재 체크(엄격) + 목록 출력(디버그)
+      - name: Validate ZIP contents (Procfile at root)
+        run: |
+          set -e
+          for f in Procfile requirements.txt; do
+            echo "Checking $f exists at ZIP root..."
+            unzip -l "$ZIP_NAME" | awk '{print $4}' | grep -qx "$f"
+          done
+          echo "✅ Procfile & requirements.txt are present at ZIP root."
+
+      ## ✅ S3 업로드 (EB가 접근 가능한 버킷)
+      - name: Upload ZIP to S3 (EB source bundle)
+        run: |
+          set -e
+          S3_KEY="eb-source/backend/${{ github.ref_name }}/${{ github.sha }}.zip"
+          echo "S3_KEY=$S3_KEY" >> $GITHUB_ENV
+
+          aws s3 cp "$ZIP_NAME" "s3://$S3_BUCKET/$S3_KEY"
+
+      ## ✅ EB Application Version 생성
+      - name: Create EB Application Version
+        run: |
+          set -e
+          VERSION_LABEL="backend-${{ github.ref_name }}-${{ github.run_number }}-${{ github.sha }}"
+          echo "VERSION_LABEL=$VERSION_LABEL" >> $GITHUB_ENV
+
+          aws elasticbeanstalk create-application-version \
+            --application-name "$EB_APP_NAME" \
+            --version-label "$VERSION_LABEL" \
+            --source-bundle S3Bucket="$S3_BUCKET",S3Key="$S3_KEY" \
+            --auto-create-application
+
+      ## ✅ EB Environment 업데이트 (배포 트리거)
+      - name: Deploy to EB Environment
+        run: |
+          set -e
+          aws elasticbeanstalk update-environment \
+            --environment-name "$EB_ENV_NAME" \
+            --version-label "$VERSION_LABEL"
+
+      ## ✅ 배포 상태 확인(선택: 실패 감지에 도움)
+      - name: Wait for environment to be ready
+        run: |
+          set -e
+          echo "Waiting for environment to become Ready..."
+          for i in {1..60}; do
+            STATUS=$(aws elasticbeanstalk describe-environments \
+              --application-name "$EB_APP_NAME" \
+              --environment-names "$EB_ENV_NAME" \
+              --query "Environments[0].Status" \
+              --output text)
+
+            HEALTH=$(aws elasticbeanstalk describe-environments \
+              --application-name "$EB_APP_NAME" \
+              --environment-names "$EB_ENV_NAME" \
+              --query "Environments[0].Health" \
+              --output text)
+
+            echo "Status=$STATUS, Health=$HEALTH (try $i/60)"
+
+            if [ "$STATUS" = "Ready" ]; then
+              echo "Environment is Ready."
+              exit 0
+            fi
+            sleep 10
+          done
+
+          echo "Timed out waiting for environment."
+          exit 1

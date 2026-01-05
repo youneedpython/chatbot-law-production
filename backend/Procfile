@@ -1,1 +1,9 @@
-web: gunicorn -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000 app.main:app
+web: gunicorn app.main:app \
+  -k uvicorn.workers.UvicornWorker \
+  -b 0.0.0.0:8000 \
+  --workers 1 \
+  --timeout 60 \
+  --graceful-timeout 30 \
+  --keep-alive 5 \
+  --access-logfile - \
+  --error-logfile -

@@ -57,8 +57,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Skip tests (not configured yet)
-        run: echo "Skip tests"
+      - name: Run backend tests
+        working-directory: backend
+        run: pytest
 
   frontend-check:
     name: Frontend Build Check

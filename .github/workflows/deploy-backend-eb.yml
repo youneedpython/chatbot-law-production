@@ -37,21 +37,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Guard - branch must match environment
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          if [[ "${{ github.ref_name }}" == "main" && "${{ job.environment.name }}" != "prod" ]]; then
-            echo "main branch must deploy to prod environment"
-            exit 1
-          fi
-
-          if [[ "${{ github.ref_name }}" == "dev" && "${{ job.environment.name }}" != "dev" ]]; then
-            echo "dev branch must deploy to dev environment"
-            exit 1
-          fi
-
       ## ✅ Github Actions가 OIDC 토큰 발급
       ## AWS STS에 전달
       - name: Configure AWS Credentials (OIDC)

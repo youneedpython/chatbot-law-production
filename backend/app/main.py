@@ -27,9 +27,10 @@ from app.core.request_id import (
     set_request_id,
 )
 from app.core.logger import get_logger
-
+from app.core.config import validate_runtime_env
 
 logger = get_logger("Chatbot-law-prod.middleware.request_id")
+validate_runtime_env()  ## 앱 실행 시점에 환경변수 검증
 
 ## app 객체 생성
 app = FastAPI(title="Chatbot Law API")

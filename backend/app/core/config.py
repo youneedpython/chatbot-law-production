@@ -38,8 +38,14 @@ ENV = os.getenv('ENV', 'local')
 # Required settings
 # ======================================
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
-if not OPENAI_API_KEY:
-    raise RuntimeError('OPENAI_API_KEY environment variable is required.')
+
+def validate_runtime_env():
+    """
+    애플리케이션 런타임에서만 필요한 환경변수 검증
+    (Alembic / CI 단계에서는 호출하지 않음)
+    """
+    if not OPENAI_API_KEY:
+        raise RuntimeError('OPENAI_API_KEY environment variable is required.')
 
 OPENAI_MODEL = os.getenv('OPENAI_MODEL', 'gpt-4o-mini')
 

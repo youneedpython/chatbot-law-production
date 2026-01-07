@@ -70,6 +70,7 @@ jobs:
         working-directory: backend  
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           python -m alembic upgrade head  
 

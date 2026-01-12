@@ -11,30 +11,35 @@ FastAPI 기반 백엔드와 React 프론트엔드로 구성된 **실서비스 �
 ## 📌 Project Overview
 
 This release represents a production-stable baseline with verified
-dev/prod parity and database migration applied.  
+dev/prod parity and applied database migrations. 
 이번 릴리스는 dev와 prod 환경의 동기화가 검증되었고, 데이터베이스 마이그레이션이 적용된 안정적인 프로덕션 기준선입니다.
 
-- **Current Version:** v0.4.2
-- **Deployment:** AWS Elastic Beanstalk (Production)
-- **Focus:** Observability · 안정성 · 운영 기준 설계
-- **RAG / CI/CD:** 차기 버전에서 확장 예정
-
-
+- **Current Version:** v0.4.4
+- **Deployment:** 
+  - Backend: AWS Elastic Beanstalk (Production)
+  - Frontend: S3 + CloudFront (Production)
+- **Focus:** 
+  - Backend & Frontend CI/CD 안정화
+  - Production 배포 표준 확립 (Frontend 포함)
+- **RAG (Vector DB):** 핵심 기능으로 차기 구현 예정
 
 ---
 
 ## 🧱 Architecture
 
-### Current (v0.4.2)
+### Current (v0.4.4)
 
 ```text
 Frontend
-└─ S3 + CloudFront
-   ↓
+└─ GitHub Actions (CI/CD)
+   └─ S3
+      └─ CloudFront
+            ↓
 Backend
-└─ Application Load Balancer (ALB)
-   └─ Elastic Beanstalk
-      └─ RDS (PostgreSQL, migrated from SQLite)
+└─ GitHub Actions (CI/CD)
+   └─ Application Load Balancer (ALB)
+      └─ Elastic Beanstalk
+         └─ RDS (PostgreSQL, migrated from SQLite)
 ``` 
 
 ### Planned
@@ -43,6 +48,20 @@ Backend
 Backend Extensions
 └─ RAG (Vector Store, Embeddings)
 ```
+---
+
+## ✅ Implemented Features
+- Backend API (FastAPI)
+- Frontend SPA (React)
+- Backend CI/CD (Elastic Beanstalk)
+- Frontend CI/CD (S3 + CloudFront)
+- Request ID 기반 트레이싱
+
+## 🔜 Planned Core Features
+- Vector DB 기반 RAG
+- 법률 문서 기반 검색 및 응답 근거 제공
+- 대화 히스토리 기반 응답 품질 개선
+
 ---
 
 ## 🛠 Tech Stack
@@ -64,6 +83,7 @@ Backend Extensions
 ### Infrastructure
 - AWS Elastic Beanstalk (EC2, ALB)
 - S3 + CloudFront
+- GitHub Actions (CI/CD, OIDC)
 - LangSmith (Tracing)
 
 ---
@@ -91,7 +111,7 @@ GET /health
 ```
 
 - 서비스 기본 생존 상태 확인
-- 로드밸런서 / CloudFront 헬스 체크 용도
+- 로드밸런서 헬스 체크 및 CloudFront 경로 검증 용도
 
 ### Planned Endpoints (Future Enhancement)
 | Endpoint              | Description                     |
@@ -127,6 +147,7 @@ GET /health
 ### Frontend
 ```env
 VITE_API_BASE_URL=/api
+VITE_APP_ENV=dev | prod    # build-time environment flag
 ```
 
 ---
@@ -165,6 +186,7 @@ npm run dev
 ## 📦 Deployment
 
 ### Frontend
+- GitHub Actions 기반 자동 배포
 - S3 Static Website Hosting
 - CloudFront CDN distribution
 
@@ -195,13 +217,24 @@ npm run dev
 
 ## 🧭 Roadmap
 
+### Core (In Progress)
+- Vector DB 기반 RAG 검색
+- 대화 히스토리 기반 응답 품질 개선
+
 ### Next
-- CI/CD automation
-- Deployment pipeline stabilization
+- Prompt 전략 고도화
+- 응답 신뢰도/출처 표시
 
 ### Future
-- RAG (Vector Store + Retrieval)
-- Authentication / Rate limiting
+- 인증 / Rate limiting
+- Admin / Monitoring UI
+
+---
+
+## ⚠️ Legal Notice
+본 서비스는 법률 자문을 제공하지 않으며,
+일반적인 정보 제공을 목적으로 합니다.
+구체적인 법률 판단은 반드시 전문가와 상담하시기 바랍니다.
 
 ---
 

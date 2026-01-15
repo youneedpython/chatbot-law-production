@@ -51,8 +51,11 @@ def process_one_doc(
 
     # 변경된 문서면 기존 벡터 삭제(중복/잔존 방지)
     if prev:
-        log.info(f"DELETE old vectors by source: {filename}")
-        store.delete_by_source(filename)
+        if settings.dry_run:
+            log.info(f"DRY_RUN=true -> skip delete_by_source: {filename}")
+        else:
+            log.info(f"DELETE old vectors by source: {filename}")
+            store.delete_by_source(filename)
 
     log.info(f"LOAD: {filename}")
     blocks = load_docx(str(doc_path))
@@ -88,11 +91,17 @@ def process_one_doc(
         })
 
         if len(vectors) >= settings.upsert_batch_size:
-            store.upsert(vectors)
+            if settings.dry_run:
+                log.info(f"DRY_RUN=true -> skip upsert batch ({len(vectors)}) for {filename}")
+            else:
+                store.upsert(vectors)
             vectors.clear()
 
     if vectors:
-        store.upsert(vectors)
+        if settings.dry_run:
+            log.info(f"DRY_RUN=true -> skip final upsert ({len(vectors)}) for {filename}")
+        else:
+            store.upsert(vectors)
 
     # manifest 갱신
     manifest[filename] = {
@@ -120,6 +129,9 @@ def main() -> None:
     doc_paths = sorted(raw_dir.glob("*.docx"))
     log.info(f"FOUND DOCX: {len(doc_paths)} in {raw_dir}")
 
+    if settings.dry_run:
+        log.info("DRY_RUN=true -> will NOT write to Pinecone (no delete/upsert).")
+
     for p in doc_paths:
         try:
             process_one_doc(
@@ -133,6 +145,10 @@ def main() -> None:
             # 운영에서는 한 파일 실패로 전체 중단하지 않게(원하면 fail-fast로 바꿀 수 있음)
             log.exception(f"FAILED: {p.name} error={e}")
 
-    save_manifest(settings.manifest_path, manifest)
-    log.info(f"MANIFEST SAVED: {settings.manifest_path}")
+    if settings.dry_run and not settings.save_manifest_on_dry_run:
+        log.info("DRY_RUN=true & SAVE_MANIFEST_ON_DRY_RUN=false -> skip manifest save.")
+    else:
+        save_manifest(settings.manifest_path, manifest)
+        log.info(f"MANIFEST SAVED: {settings.manifest_path}")
+
     log.info("✅ Indexing pipeline completed.")

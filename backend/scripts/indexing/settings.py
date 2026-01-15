@@ -9,6 +9,12 @@ from dotenv import load_dotenv
 # 로컬 개발: .env가 존재하면 로드 (prod/eb에서는 보통 .env 없음)
 load_dotenv()
 
+def _as_bool(v: str | None) -> bool:
+    if v is None:
+        return False
+    return v.strip().lower() in ("1", "true", "yes", "y", "on")
+
+
 @dataclass(frozen=True)
 class Settings:
     # Paths
@@ -34,6 +40,11 @@ class Settings:
 
     # Safety
     fail_on_missing_env: bool = os.getenv("FAIL_ON_MISSING_ENV", "true").lower() == "true"
+
+    # Dry run
+    dry_run: bool = _as_bool(os.getenv("DRY_RUN"))
+    save_manifest_on_dry_run: bool = os.getenv("SAVE_MANIFEST_ON_DRY_RUN", "true").lower() == "true"
+
 
 def load_settings() -> Settings:
     s = Settings()

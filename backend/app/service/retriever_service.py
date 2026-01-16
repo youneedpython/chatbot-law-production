@@ -37,6 +37,6 @@ def get_retriever():
 
     return vectorstore.as_retriever(
         search_kwargs={
-            "k": RAG_TOP_K,
+            "k": int(RAG_TOP_K),
         }
     )

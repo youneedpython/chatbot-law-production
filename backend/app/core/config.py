@@ -57,7 +57,7 @@ PINECONE_API_KEY = os.getenv('PINECONE_API_KEY')
 LANGCHAIN_TRACING_V2 = os.getenv('LANGCHAIN_TRACING_V2', 'false').lower() == 'true'
 LANGSMITH_API_KEY = os.getenv('LANGSMITH_API_KEY')
 PINECONE_INDEX_NAME = os.getenv('PINECONE_INDEX_NAME', 'chatbot-law-dev')
-RAG_TOP_K=os.getenv('RAG_TOP_K', '5')  # 검색된 문서 개수
+PINECONE_TOP_K = int(os.getenv("PINECONE_TOP_K", "5"))  # 검색된 문서 개수
 
 
 # ======================================

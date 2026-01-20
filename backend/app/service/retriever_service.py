@@ -5,6 +5,7 @@ from langchain_pinecone import PineconeVectorStore
 from app.core.config import (
     PINECONE_API_KEY,
     PINECONE_INDEX_NAME,
+    PINECONE_NAMESPACE,
     RAG_TOP_K,
 )
 from app.core.logger import get_logger
@@ -33,10 +34,12 @@ def get_retriever():
         index_name=PINECONE_INDEX_NAME,
         embedding=embeddings,
         pinecone_api_key=PINECONE_API_KEY,
+        namespace=PINECONE_NAMESPACE,
     )
 
     return vectorstore.as_retriever(
         search_kwargs={
             "k": int(RAG_TOP_K),
+            "namespace": PINECONE_NAMESPACE,
         }
     )

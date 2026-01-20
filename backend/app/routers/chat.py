@@ -40,7 +40,9 @@ def chat(
     if not payload.message.strip():
         raise HTTPException(status_code=400, detail="message is empty")
 
-    ## 1. user 메시지 저장
+    # ------------------------------------------------------------------
+    # 1. user 메시지 저장
+    # ------------------------------------------------------------------
     append_message(
         db=db,
         conversation_id=session_id,
@@ -48,10 +50,20 @@ def chat(
         content=payload.message,
     )
 
-    ## 2. LLM 호출 (service로 위임)
-    answer, _ = ask_llm(db=db, message=payload.message, session_id=session_id)
+    # ------------------------------------------------------------------
+    # 2. LLM 호출 (RAG)
+    #    ask_llm은 (answer, session_id, sources)를 반환
+    # ------------------------------------------------------------------
+    answer, _, sources = ask_llm(
+        db=db,
+        message=payload.message,
+        session_id=session_id,
+    )
 
-    ## 3. assistant 메시지 저장
+    # ------------------------------------------------------------------
+    # 3. assistant 메시지 저장
+    #    ※ DB에는 answer만 저장 (sources는 응답 메타 정보)
+    # ------------------------------------------------------------------
     append_message(
         db=db,
         conversation_id=session_id,
@@ -59,8 +71,11 @@ def chat(
         content=answer,
     )
 
-    ## 4. 응답 반환
+    # ------------------------------------------------------------------
+    # 4. 응답 반환
+    # ------------------------------------------------------------------
     return {
         "session_id": session_id,
         "answer": answer,
+        "sources": sources,
     }

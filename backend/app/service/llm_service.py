@@ -17,17 +17,18 @@ def get_chain():
     return build_rag_chain()
 
 
-def ask_llm(db: Session, message: str, session_id: Optional[str] = None) -> tuple[str, str]:
+def ask_llm(db: Session, message: str, session_id: Optional[str] = None):
+    """
+    Returns:
+        (answer: str, session_id: str, sources: list[dict])
+    """
     if not session_id:
         session_id = str(uuid.uuid4())
         logger.info("Generated new session_id=%s", session_id)
 
     HISTORY_LIMIT = 20
     history = list_messages(db, session_id, limit=HISTORY_LIMIT)
-
-    history_text = "\n".join(
-        [f"{m.role}: {m.content}" for m in history]
-    ).strip()
+    history_text = "\n".join([f"{m.role}: {m.content}" for m in history]).strip()
 
     if history and history[-1].role == "user" and history[-1].content.strip() == message.strip():
         input_text = f"[대화 기록]\n{history_text}"
@@ -40,16 +41,15 @@ def ask_llm(db: Session, message: str, session_id: Optional[str] = None) -> tupl
 
     chain = get_chain()
 
-    chunks = []
-    for token in chain.stream({"input": input_text}):
-        chunks.append(token if isinstance(token, str) else str(token))
-
-    answer = "".join(chunks).strip()
+    result = chain({"input": input_text})  # invoke와 동일하게 동작
+    answer = (result.get("answer") or "").strip()
+    sources = result.get("sources") or []
 
     logger.info(
-        "ask_llm completed. session_id=%s, answer_len=%d",
+        "ask_llm completed. session_id=%s, answer_len=%d, sources=%d",
         session_id,
         len(answer),
+        len(sources),
     )
 
-    return answer, session_id
+    return answer, session_id, sources

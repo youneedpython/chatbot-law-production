@@ -52,22 +52,55 @@ def _build_system_prompt(keyword_dictionary: dict) -> str:
     return base
 
 
-def _format_docs_with_citation_numbers(docs: List[Document]) -> Tuple[str, List[Dict[str, Any]]]:
+def _build_chunk_id(meta: dict) -> str:
+    source = (meta.get("source") or "").strip()
+    doc_sha = (meta.get("doc_sha") or "").strip()
+    chunk_index = meta.get("chunk_index")
+
+    if not source or not doc_sha or chunk_index is None:
+        return ""
+
+    return f"{source}::{doc_sha[:12]}::{int(chunk_index)}"
+
+
+def _build_snippet(meta: dict, max_len: int = 220) -> str:
+    text = (meta.get("text") or "").strip()
+    if not text:
+        return ""
+    text = " ".join(text.split())
+    return text[:max_len] + ("…" if len(text) > max_len else "")
+
+
+def _format_docs_with_citation_numbers(
+    docs: List[Document],
+) -> Tuple[str, List[Dict[str, Any]]]:
     """
-    - LLM에 넣을 context: [1] ... [2] ... 형태로 번호 부여
-    - API로 내려줄 sources 배열 생성
+    - LLM context: [1] ... [2] ... 형식 유지
+    - API sources: UI 친화적인 출처 객체로 확장
     """
     context_blocks: List[str] = []
-    sources: List[Dict[str, Any]] = []
+    raw_sources: List[Dict[str, Any]] = []
 
     for idx, doc in enumerate(docs, start=1):
         meta = doc.metadata or {}
+
         source = meta.get("source") or meta.get("doc_id") or "unknown"
-        chunk_id = meta.get("chunk_id") or meta.get("chunk") or ""
         page = meta.get("page")
 
-        # LLM context (번호 + 출처 메타 + 본문)
-        header = f"[{idx}] 출처: {source}"
+        citation = meta.get("citation")
+        law_title = meta.get("law_title")
+        law_short = meta.get("law_short")
+
+        article_no = meta.get("article_no")
+        article_title = meta.get("article_title")
+        clause_no = meta.get("clause_no")
+        item_no = meta.get("item_no")
+
+        chunk_id = _build_chunk_id(meta)
+        snippet = _build_snippet(meta)
+
+        # ---------- LLM context ----------
+        header = f"[{idx}] 출처: {citation or source}"
         if page is not None:
             header += f" (p.{page})"
         if chunk_id:
@@ -75,15 +108,48 @@ def _format_docs_with_citation_numbers(docs: List[Document]) -> Tuple[str, List[
 
         context_blocks.append(f"{header}\n{doc.page_content}")
 
-        # API sources (LLM이 아닌 시스템이 생성)
-        sources.append(
+        # ---------- API source ----------
+        raw_sources.append(
             {
                 "id": idx,
                 "source": source,
-                "page": page,
                 "chunk_id": chunk_id,
+                "page": page,
+                "citation": citation,
+                "law_title": law_title,
+                "law_short": law_short,
+                "article_no": article_no,
+                "article_title": article_title,
+                "clause_no": clause_no,
+                "item_no": item_no,
+                "snippet": snippet,
+                "doc_sha": meta.get("doc_sha"),
+                "chunk_index": meta.get("chunk_index"),
+                "pipeline_version": meta.get("pipeline_version"),
+                "span_policy": meta.get("span_policy"),
+                "indexed_at": meta.get("indexed_at"),
             }
         )
+
+    # ---------- dedupe sources ----------
+    seen = set()
+    sources: List[Dict[str, Any]] = []
+
+    for src in raw_sources:
+        key = (
+            src.get("citation")
+            or src.get("chunk_id")
+            or (src.get("source"), src.get("doc_sha"), src.get("chunk_index"))
+        )
+
+        if key in seen:
+            continue
+        seen.add(key)
+        sources.append(src)
+
+    # id 재정렬
+    for i, src in enumerate(sources, start=1):
+        src["id"] = i
 
     context_text = "\n\n---\n\n".join(context_blocks).strip()
     return context_text, sources

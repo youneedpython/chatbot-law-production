@@ -135,7 +135,14 @@ export default function App() {
         throw new Error(`HTTP ${res.status}`);
 
       const data = await res.json();
-      setHistory((p) => [...p, { role: "assistant", content: data.answer }]);
+      setHistory((p) => [
+        ...p,
+        {
+          role: "assistant",
+          content: data.answer,
+          sources: data.sources || [],   // ✅ 추가
+        },
+      ]);
     } finally {
       setLoading(false);
     }

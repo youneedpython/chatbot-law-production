@@ -9,26 +9,28 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { royAvatar, userAvatar } from "../assets/avatars";
+import SourcesPanel from "./SourcesPanel";
 
 
 export default function ChatMessage({
     role,
     content,
+    sources, 
     onCopy,
     showCopied,
 }){
     const isUser = role === "user";
 
     return (
-        <div
-      style={{
-        display: "flex",
-        justifyContent: isUser ? "flex-end" : "flex-start",
-        alignItems: "flex-start",
-        gap: 10,
-        marginBottom: 12,
-      }}
-    >
+      <div
+        style={{
+          display: "flex",
+          justifyContent: isUser ? "flex-end" : "flex-start",
+          alignItems: "flex-start",
+          gap: 10,
+          marginBottom: 12,
+        }}
+      >
       {/* assistant avatar */}
       {!isUser && (
         <img
@@ -64,9 +66,14 @@ export default function ChatMessage({
         {isUser ? (
           <div style={{ whiteSpace: "pre-wrap" }}>{content}</div>
         ) : (
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>
-            {content}
-          </ReactMarkdown>
+          <>
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {content}
+            </ReactMarkdown>
+
+            {/* ✅ 출처 패널: assistant 메시지에만 노출 */}
+            <SourcesPanel sources={sources} />
+          </>
         )}
       </div>
 

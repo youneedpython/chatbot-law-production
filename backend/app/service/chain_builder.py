@@ -75,13 +75,34 @@ def _format_docs_with_citation_numbers(
     docs: List[Document],
 ) -> Tuple[str, List[Dict[str, Any]]]:
     """
-    - LLM context: [1] ... [2] ... 형식 유지
-    - API sources: UI 친화적인 출처 객체로 확장
+    핵심 목표:
+    - LLM 본문 인용 번호 [n]과 API sources[n].id가 1:1로 반드시 일치하도록 만든다.
+    - 따라서 dedupe를 먼저 확정한 뒤, 그 결과에 대해 번호를 1..N으로 부여한다.
     """
-    context_blocks: List[str] = []
-    raw_sources: List[Dict[str, Any]] = []
+    # 1) dedupe docs first (keep first occurrence)
+    seen = set()
+    deduped_docs: List[Document] = []
 
-    for idx, doc in enumerate(docs, start=1):
+    for doc in docs:
+        meta = doc.metadata or {}
+
+        citation = meta.get("citation")
+        chunk_id = _build_chunk_id(meta)
+        source = meta.get("source") or meta.get("doc_id") or "unknown"
+        doc_sha = meta.get("doc_sha")
+        chunk_index = meta.get("chunk_index")
+
+        key = citation or chunk_id or (source, doc_sha, chunk_index)
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped_docs.append(doc)
+
+    # 2) build context + sources with the SAME numbering
+    context_blocks: List[str] = []
+    sources: List[Dict[str, Any]] = []
+
+    for idx, doc in enumerate(deduped_docs, start=1):
         meta = doc.metadata or {}
 
         source = meta.get("source") or meta.get("doc_id") or "unknown"
@@ -99,17 +120,17 @@ def _format_docs_with_citation_numbers(
         chunk_id = _build_chunk_id(meta)
         snippet = _build_snippet(meta)
 
-        # ---------- LLM context ----------
+        # ---- LLM context: 반드시 이 번호가 sources.id와 동일해야 함 ----
         header = f"[{idx}] 출처: {citation or source}"
         if page is not None:
             header += f" (p.{page})"
-        if chunk_id:
-            header += f" / chunk: {chunk_id}"
+        # chunk_id는 사용자/LLM에 불필요하면 아래 줄은 유지하지 않아도 됨
+        # header += f" / chunk: {chunk_id}"  # 필요 시만
 
         context_blocks.append(f"{header}\n{doc.page_content}")
 
-        # ---------- API source ----------
-        raw_sources.append(
+        # ---- API sources: 동일 idx를 id로 사용 ----
+        sources.append(
             {
                 "id": idx,
                 "source": source,
@@ -130,26 +151,6 @@ def _format_docs_with_citation_numbers(
                 "indexed_at": meta.get("indexed_at"),
             }
         )
-
-    # ---------- dedupe sources ----------
-    seen = set()
-    sources: List[Dict[str, Any]] = []
-
-    for src in raw_sources:
-        key = (
-            src.get("citation")
-            or src.get("chunk_id")
-            or (src.get("source"), src.get("doc_sha"), src.get("chunk_index"))
-        )
-
-        if key in seen:
-            continue
-        seen.add(key)
-        sources.append(src)
-
-    # id 재정렬
-    for i, src in enumerate(sources, start=1):
-        src["id"] = i
 
     context_text = "\n\n---\n\n".join(context_blocks).strip()
     return context_text, sources

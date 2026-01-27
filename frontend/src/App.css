@@ -1,213 +1,319 @@
+/* =========================================================
+   App.css (FULL)
+   - No nested scroll (browser scroll only)
+   - Sticky bottom input like ChatGPT
+   - Minimal borders (dock border removed)
+   ========================================================= */
+
+/* ---------- Base / Reset ---------- */
 :root{
   --bg: #ffffff;
   --panel: #ffffff;
-  --border: #e7e7e7;
-  --muted: #666;
-  --text: #111;
-  --user: #e9f0ff;
-  --assistant: #f6f7f9;
-  --shadow: 0 6px 20px rgba(0,0,0,0.06);
+  --text: #111827;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+
+  --userBubble: #f3f4f6;
+  --assistantBubble: #ffffff;
+
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.06);
+  --shadow-md: 0 2px 10px rgba(0,0,0,0.08);
 }
 
-* { box-sizing: border-box; }
+*{ box-sizing: border-box; }
 
-.page {
-  min-height: 100vh;
+html, body{
+  height: auto;
+}
+
+body{
+  margin: 0;
   background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
+  line-height: 1.55;
+}
+
+/* ---------- Page Layout ---------- */
+.page{
+  width: 100%;
+}
+
+/* 중앙 폭 제한(데스크탑에서 너무 넓지 않게) */
+.container{
+  width: min(980px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 24px 0;
+}
+
+/* 채팅 레이아웃: 문서형(브라우저 스크롤) */
+.container.chatLayout{
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* ---------- Header ---------- */
+.header{
+  padding: 6px 0 2px;
+}
+
+.title{
+  margin: 0;
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.subtitle{
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+/* ---------- Chat Body (NO internal scroll) ---------- */
+.chatBody{
+  /* ✅ 내부 스크롤 금지: height/overflow 설정하지 않음 */
+  padding: 16px 0 130px; /* ✅ 입력창이 덮지 않도록 하단 여백 확보 */
+}
+
+.sectionLabel{
+  margin: 6px 0 12px;
+  font-size: 14px;
+  font-weight: 700;
   color: var(--text);
 }
 
-.container {
-  max-width: 900px;
-  margin: 0 auto;
-  padding: 28px 16px 40px;
+/* ---------- Message Row / Bubble ---------- */
+.msgRow{
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 10px 0;
 }
 
-.header {
-  margin-bottom: 16px;
-}
-.title {
-  font-size: 28px;
-  font-weight: 800;
-  margin: 0 0 6px;
-}
-.subtitle {
-  color: var(--muted);
-  margin: 0;
-  font-size: 14px;
+/* user는 우측 정렬, assistant는 좌측 정렬 */
+.msgRow.user{
+  justify-content: flex-end;
 }
 
-.chatWrap {
-  border: 1px solid var(--border);
+.msgRow.assistant{
+  justify-content: flex-start;
+}
+
+/* 아바타(이미지/아이콘) 영역이 있다면 */
+.avatar{
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  flex: 0 0 auto;
+}
+
+/* 말풍선 */
+.bubble{
+  max-width: 720px;
+  padding: 14px 16px;
   border-radius: 14px;
+  border: 1px solid var(--border);
   background: var(--panel);
-  box-shadow: var(--shadow);
-  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  font-size: 14px;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
-.chatTop {
-  padding: 14px 14px 10px;
-  border-bottom: 1px solid var(--border);
+/* 사용자 말풍선 */
+.bubble.user{
+  background: var(--userBubble);
+  border-color: transparent;
+}
+
+/* 어시스턴트 말풍선 */
+.bubble.assistant{
+  background: var(--assistantBubble);
+}
+
+/* 말풍선 안에서 리스트/문단 가독성 */
+.bubble p{
+  margin: 0 0 10px;
+}
+.bubble p:last-child{
+  margin-bottom: 0;
+}
+.bubble ul, .bubble ol{
+  margin: 8px 0 8px 20px;
+  padding: 0;
+}
+.bubble li{
+  margin: 4px 0;
+}
+
+/* 복사 버튼(있다면) */
+.copyBtn{
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: #fff;
+  box-shadow: var(--shadow-sm);
+  font-size: 12px;
+  cursor: pointer;
+}
+.copyBtn:active{
+  transform: translateY(1px);
+}
+
+/* 타이핑 점(...) 로더 */
+.typingDots{
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+}
+.typingDots span{
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #9ca3af;
+  display: inline-block;
+  animation: dotPulse 1.2s infinite ease-in-out;
+}
+.typingDots span:nth-child(2){ animation-delay: .15s; }
+.typingDots span:nth-child(3){ animation-delay: .3s; }
+
+@keyframes dotPulse{
+  0%, 80%, 100%{ opacity: .35; transform: translateY(0); }
+  40%{ opacity: 1; transform: translateY(-2px); }
+}
+
+/* ---------- Bottom Input Dock (ChatGPT-like) ---------- */
+.chatInputDock{
+  position: sticky;
+  bottom: 0;
+  z-index: 50;
+
+  /* ✅ 도킹 영역 라인 제거 */
+  border: none !important;
+
+  /* 배경은 투명 + 패딩으로 “떠 있는” 느낌 */
+  background: transparent;
+  padding: 10px 0 18px;
+}
+
+/* ChatInput이 어떤 구조든, 아래 규칙이 최대한 자연스럽게 적용되도록 */
+.chatInputDock .chatInputWrap,
+.chatInputDock form{
   display: flex;
   gap: 10px;
   align-items: center;
 }
 
-.input {
-  flex: 1;
-  padding: 12px 12px;
+/* 입력 박스 (ChatGPT 느낌) */
+.chatInputDock input,
+.chatInputDock textarea{
+  width: auto;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 16px;
+  padding: 12px 14px;
   outline: none;
+  background: #fff;
+  box-shadow: var(--shadow-md);
   font-size: 14px;
 }
-.input:focus {
-  border-color: #b9c7ff;
+
+/* 포커스 시 테두리만 살짝 */
+.chatInputDock input:focus,
+.chatInputDock textarea:focus{
+  border-color: #d1d5db;
 }
 
-.sendBtn {
+/* 전송 버튼 */
+.chatInputDock button{
+  border: none;
+  border-radius: 14px;
   padding: 11px 14px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: #111;
+  background: #6b7280;
   color: #fff;
   cursor: pointer;
-  font-weight: 700;
+  box-shadow: var(--shadow-sm);
+  font-size: 14px;
+  white-space: nowrap;
 }
-.sendBtn:disabled {
-  opacity: 0.55;
+.chatInputDock button:disabled{
+  opacity: .6;
   cursor: not-allowed;
 }
 
-.metaRow {
-  padding: 0 14px 12px;
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  align-items: center;
-}
-.sessionChip {
-  font-size: 12px;
-  color: var(--muted);
-  border: 1px dashed var(--border);
-  padding: 6px 10px;
-  border-radius: 999px;
-}
-.clearBtn {
-  font-size: 12px;
-  border: 1px solid var(--border);
-  background: #fff;
-  color: #333;
-  border-radius: 999px;
-  padding: 6px 10px;
-  cursor: pointer;
-}
-.clearBtn:hover { background: #fafafa; }
-
-.chatBody {
-  padding: 16px 14px;
-  height: calc(100vh - 250px);
-  min-height: 420px;
-  overflow: auto;
+/* ---------- Responsive ---------- */
+@media (max-width: 640px){
+  .container{
+    width: calc(100% - 20px);
+    padding: 18px 0;
+  }
+  .title{
+    font-size: 22px;
+  }
+  .bubble{
+    max-width: 92vw;
+    padding: 12px 14px;
+  }
+  .chatBody{
+    padding-bottom: 150px; /* 모바일에서 키보드/버튼 고려 */
+  }
 }
 
-.sectionLabel {
-  font-size: 13px;
-  font-weight: 800;
-  margin: 0 0 10px;
-  color: #222;
-}
 
-.msgRow {
-  display: flex;
-  margin: 10px 0;
-}
-.msgRow.user { justify-content: flex-end; }
-.msgRow.assistant { justify-content: flex-start; }
+/* ====== FIX: input + button one-line (override) ====== */
 
-.bubble {
-  max-width: min(680px, 92%);
-  padding: 12px 12px;
-  border-radius: 14px;
-  border: 1px solid var(--border);
-  white-space: pre-wrap;
-  line-height: 1.45;
-  font-size: 14px;
-}
-.bubble.user {
-  background: var(--user);
-  border-top-right-radius: 6px;
-}
-.bubble.assistant {
-  background: var(--assistant);
-  border-top-left-radius: 6px;
-}
-
-.bubbleHeader {
-  font-size: 12px;
-  font-weight: 800;
-  color: #333;
-  margin-bottom: 6px;
-  opacity: 0.9;
-}
-
-.errorBar {
-  margin: 0 14px 14px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid #ffd2d2;
-  background: #fff2f2;
-  color: #9b1c1c;
-  font-size: 13px;
-}
-
-.typingDots {
-  display: inline-flex;
-  gap: 6px;
-  align-items: center;
-}
-.typingDots span {
-  width: 6px;
-  height: 6px;
-  background: #555;
-  border-radius: 50%;
-  display: inline-block;
-  animation: bounce 1s infinite ease-in-out;
-}
-
-.copy-btn {
-  position: relative;
-  border: 1px solid #d1d5db;
-  background: white;
-  border-radius: 10px;
-  padding: 6px 10px;
-  cursor: pointer;
-  font-size: 12px;
-}
-
-.copy-btn:hover {
-  background: #eef2ff; /* hover 색 */
-  border-color: #a5b4fc;
-}
-
-.copy-tooltip {
-  position: absolute;
-  top: -32px;
+/* ---------- Bottom Input Dock ---------- */
+.chatInputDock{
+  position: fixed;
+  left: 0;
   right: 0;
-  background: #111827;
-  color: white;
-  padding: 6px 8px;
-  border-radius: 8px;
-  font-size: 12px;
-  white-space: nowrap;
-  opacity: 0.95;
+  bottom: 0;
+  background: #ffffff;
+  padding: 12px 16px;
+  z-index: 50;
 }
 
+/* ✅ 메시지 영역과 동일한 중앙 폭 */
+.chatInputInner{
+  max-width: 980px;           /* container와 통일 */
+  margin: 0 auto;
+  width: 100%;
+}
 
-.typingDots span:nth-child(2) { animation-delay: 0.12s; }
-.typingDots span:nth-child(3) { animation-delay: 0.24s; }
+/* 입력 + 버튼 한 줄 */
+.chatInputInner form{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
 
-@keyframes bounce {
-  0%, 80%, 100% { transform: translateY(0); opacity: .5; }
-  40% { transform: translateY(-4px); opacity: 1; }
+/* 입력창 */
+.chatInputInner input{
+  flex: 1;
+  min-width: 0;
+  padding: 12px 16px;
+  border-radius: 18px;
+  border: 1px solid #e5e7eb;
+  font-size: 14px;
+  outline: none;
+}
+
+/* 전송 버튼 */
+.chatInputInner button{
+  padding: 12px 16px;
+  border-radius: 16px;
+  border: none;
+  background: #6b7280;
+  color: white;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.chatInputInner button:disabled{
+  opacity: 0.6;
+  cursor: not-allowed;
 }

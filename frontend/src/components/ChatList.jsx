@@ -25,14 +25,14 @@ export default function ChatList({
 
     return (
     <div className="chatBody">
-      <div className="sectionLabel">대화</div>
+      {/* <div className="sectionLabel">...</div> */}
 
       {history.map((m, idx) => (
         <ChatMessage
           key={idx}
           role={m.role}
           content={m.content}
-          sources={m.sources}  // ✅ 추가: assistant 메시지에 출처 전달
+          sources={m.sources || []}  // ✅ 추가: assistant 메시지에 출처 전달
           onCopy={() => onCopy(m.content, idx)}
           showCopied={copiedIndex === idx}
         />

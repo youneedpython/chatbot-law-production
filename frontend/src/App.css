@@ -1,11 +1,11 @@
 /* =========================================================
-   App.css (FULL)
-   - No nested scroll (browser scroll only)
-   - Sticky bottom input like ChatGPT
-   - Minimal borders (dock border removed)
+   App.css (CLEAN)
+   - Browser scroll only (no nested scroll)
+   - Fixed bottom input dock (ChatGPT-like)
+   - Blank state + suggestion chips
    ========================================================= */
 
-/* ---------- Base / Reset ---------- */
+/* ---------- Theme / Tokens ---------- */
 :root{
   --bg: #ffffff;
   --panel: #ffffff;
@@ -18,35 +18,42 @@
 
   --shadow-sm: 0 1px 2px rgba(0,0,0,0.06);
   --shadow-md: 0 2px 10px rgba(0,0,0,0.08);
+
+  --container-max: 900px;
+
+  /* Bottom dock sizing */
+  --dock-bg: #ffffff;
+  --dock-pad-y: 12px;
+  --dock-pad-x: 16px;
+  --dock-gap: 10px;
+
+  /* Ensure messages are not covered by the dock */
+  --chat-bottom-space: 140px;
 }
 
+/* ---------- Reset ---------- */
 *{ box-sizing: border-box; }
 
-html, body{
-  height: auto;
-}
+html, body{ height: auto; }
 
 body{
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial,
+    "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
   line-height: 1.55;
 }
 
-/* ---------- Page Layout ---------- */
-.page{
-  width: 100%;
-}
+/* ---------- Page / Container ---------- */
+.page{ width: 100%; }
 
-/* 중앙 폭 제한(데스크탑에서 너무 넓지 않게) */
 .container{
-  width: min(980px, calc(100% - 32px));
+  width: min(var(--container-max), calc(100% - 32px));
   margin: 0 auto;
   padding: 24px 0;
 }
 
-/* 채팅 레이아웃: 문서형(브라우저 스크롤) */
 .container.chatLayout{
   display: flex;
   flex-direction: column;
@@ -54,9 +61,7 @@ body{
 }
 
 /* ---------- Header ---------- */
-.header{
-  padding: 6px 0 2px;
-}
+.header{ padding: 6px 0 2px; }
 
 .title{
   margin: 0;
@@ -73,15 +78,7 @@ body{
 
 /* ---------- Chat Body (NO internal scroll) ---------- */
 .chatBody{
-  /* ✅ 내부 스크롤 금지: height/overflow 설정하지 않음 */
-  padding: 16px 0 130px; /* ✅ 입력창이 덮지 않도록 하단 여백 확보 */
-}
-
-.sectionLabel{
-  margin: 6px 0 12px;
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--text);
+  padding: 16px 0 var(--chat-bottom-space);
 }
 
 /* ---------- Message Row / Bubble ---------- */
@@ -92,16 +89,9 @@ body{
   margin: 10px 0;
 }
 
-/* user는 우측 정렬, assistant는 좌측 정렬 */
-.msgRow.user{
-  justify-content: flex-end;
-}
+.msgRow.user{ justify-content: flex-end; }
+.msgRow.assistant{ justify-content: flex-start; }
 
-.msgRow.assistant{
-  justify-content: flex-start;
-}
-
-/* 아바타(이미지/아이콘) 영역이 있다면 */
 .avatar{
   width: 36px;
   height: 36px;
@@ -109,7 +99,6 @@ body{
   flex: 0 0 auto;
 }
 
-/* 말풍선 */
 .bubble{
   max-width: 720px;
   padding: 14px 16px;
@@ -122,33 +111,26 @@ body{
   overflow-wrap: anywhere;
 }
 
-/* 사용자 말풍선 */
 .bubble.user{
   background: var(--userBubble);
   border-color: transparent;
 }
 
-/* 어시스턴트 말풍선 */
 .bubble.assistant{
   background: var(--assistantBubble);
 }
 
-/* 말풍선 안에서 리스트/문단 가독성 */
-.bubble p{
-  margin: 0 0 10px;
-}
-.bubble p:last-child{
-  margin-bottom: 0;
-}
+.bubble p{ margin: 0 0 10px; }
+.bubble p:last-child{ margin-bottom: 0; }
+
 .bubble ul, .bubble ol{
   margin: 8px 0 8px 20px;
   padding: 0;
 }
-.bubble li{
-  margin: 4px 0;
-}
 
-/* 복사 버튼(있다면) */
+.bubble li{ margin: 4px 0; }
+
+/* Copy button (optional) */
 .copyBtn{
   display: inline-flex;
   align-items: center;
@@ -161,16 +143,16 @@ body{
   font-size: 12px;
   cursor: pointer;
 }
-.copyBtn:active{
-  transform: translateY(1px);
-}
 
-/* 타이핑 점(...) 로더 */
+.copyBtn:active{ transform: translateY(1px); }
+
+/* Typing dots */
 .typingDots{
   display: inline-flex;
   gap: 5px;
   align-items: center;
 }
+
 .typingDots span{
   width: 6px;
   height: 6px;
@@ -179,6 +161,7 @@ body{
   display: inline-block;
   animation: dotPulse 1.2s infinite ease-in-out;
 }
+
 .typingDots span:nth-child(2){ animation-delay: .15s; }
 .typingDots span:nth-child(3){ animation-delay: .3s; }
 
@@ -187,62 +170,129 @@ body{
   40%{ opacity: 1; transform: translateY(-2px); }
 }
 
-/* ---------- Bottom Input Dock (ChatGPT-like) ---------- */
+/* ---------- Bottom Input Dock (Fixed) ---------- */
 .chatInputDock{
-  position: sticky;
+  position: fixed;
+  left: 0;
+  right: 0;
   bottom: 0;
   z-index: 50;
 
-  /* ✅ 도킹 영역 라인 제거 */
-  border: none !important;
-
-  /* 배경은 투명 + 패딩으로 “떠 있는” 느낌 */
-  background: transparent;
-  padding: 10px 0 18px;
+  background: var(--dock-bg);
+  padding: var(--dock-pad-y) var(--dock-pad-x);
 }
 
-/* ChatInput이 어떤 구조든, 아래 규칙이 최대한 자연스럽게 적용되도록 */
-.chatInputDock .chatInputWrap,
-.chatInputDock form{
+.chatInputInner{
+  width: 100%;
+  max-width: var(--container-max);
+  margin: 0 auto;
+}
+
+.chatInputInner form{
   display: flex;
-  gap: 10px;
   align-items: center;
+  gap: var(--dock-gap);
 }
 
-/* 입력 박스 (ChatGPT 느낌) */
-.chatInputDock input,
-.chatInputDock textarea{
-  width: auto;
+.chatInputInner input,
+.chatInputInner textarea{
+  flex: 1;
+  min-width: 0;
+  padding: 12px 16px;
+  border-radius: 18px;
   border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 12px 14px;
+  font-size: 14px;
   outline: none;
   background: #fff;
-  box-shadow: var(--shadow-md);
-  font-size: 14px;
 }
 
-/* 포커스 시 테두리만 살짝 */
-.chatInputDock input:focus,
-.chatInputDock textarea:focus{
+.chatInputInner input:focus,
+.chatInputInner textarea:focus{
   border-color: #d1d5db;
 }
 
-/* 전송 버튼 */
-.chatInputDock button{
+.chatInputInner button{
+  padding: 12px 16px;
+  border-radius: 16px;
   border: none;
-  border-radius: 14px;
-  padding: 11px 14px;
-  background: #6b7280;
+  /* background: #6b7280; */
+  background: #000;
   color: #fff;
-  cursor: pointer;
-  box-shadow: var(--shadow-sm);
   font-size: 14px;
+  cursor: pointer;
   white-space: nowrap;
+  box-shadow: var(--shadow-sm);
 }
-.chatInputDock button:disabled{
-  opacity: .6;
+
+.chatInputInner button:disabled{
+  opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* =========================================================
+   Blank State + Suggestion Chips
+   ========================================================= */
+.blank{ padding: 10px 0 0; }
+
+.blankCard{
+  border: 1px solid var(--border);
+  background: var(--panel);
+  border-radius: 16px;
+  padding: 18px 16px;
+  box-shadow: var(--shadow-sm);
+}
+
+.blankHeader{ margin-bottom: 12px; }
+
+.blankTitle{
+  margin: 0 0 8px;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.blankDesc{
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--muted);
+}
+
+.blankLabel{
+  margin-top: 14px;
+  margin-bottom: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.chips{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.chip{
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: 999px;
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 1.25;
+  cursor: pointer;
+  text-align: left;
+  max-width: 100%;
+  box-shadow: var(--shadow-sm);
+}
+
+.chip:hover{ background: rgba(0,0,0,0.03); }
+.chip:active{ transform: translateY(1px); }
+
+.blankNote{
+  margin: 14px 0 0;
+  font-size: 12px;
+  line-height: 1.55;
+  color: rgba(0,0,0,0.55);
 }
 
 /* ---------- Responsive ---------- */
@@ -251,69 +301,18 @@ body{
     width: calc(100% - 20px);
     padding: 18px 0;
   }
-  .title{
-    font-size: 22px;
-  }
+
+  .title{ font-size: 22px; }
+
   .bubble{
     max-width: 92vw;
     padding: 12px 14px;
   }
-  .chatBody{
-    padding-bottom: 150px; /* 모바일에서 키보드/버튼 고려 */
+
+  :root{
+    --chat-bottom-space: 160px;
   }
-}
 
-
-/* ====== FIX: input + button one-line (override) ====== */
-
-/* ---------- Bottom Input Dock ---------- */
-.chatInputDock{
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: #ffffff;
-  padding: 12px 16px;
-  z-index: 50;
-}
-
-/* ✅ 메시지 영역과 동일한 중앙 폭 */
-.chatInputInner{
-  max-width: 980px;           /* container와 통일 */
-  margin: 0 auto;
-  width: 100%;
-}
-
-/* 입력 + 버튼 한 줄 */
-.chatInputInner form{
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-/* 입력창 */
-.chatInputInner input{
-  flex: 1;
-  min-width: 0;
-  padding: 12px 16px;
-  border-radius: 18px;
-  border: 1px solid #e5e7eb;
-  font-size: 14px;
-  outline: none;
-}
-
-/* 전송 버튼 */
-.chatInputInner button{
-  padding: 12px 16px;
-  border-radius: 16px;
-  border: none;
-  background: #6b7280;
-  color: white;
-  font-size: 14px;
-  white-space: nowrap;
-}
-
-.chatInputInner button:disabled{
-  opacity: 0.6;
-  cursor: not-allowed;
+  .blankCard{ padding: 16px 14px; }
+  .chip{ padding: 9px 11px; }
 }

@@ -317,3 +317,92 @@ body{
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+
+/* =========================================================
+   Blank State + Suggestion Chips
+   - Show only when history is empty
+   - Calm, legal-service friendly tone
+   ========================================================= */
+
+.blank{
+  padding: 10px 0 0;
+}
+
+.blankCard{
+  border: 1px solid var(--border);
+  background: var(--panel);
+  border-radius: 16px;
+  padding: 18px 16px;
+  box-shadow: var(--shadow-sm);
+}
+
+.blankHeader{
+  margin-bottom: 12px;
+}
+
+.blankTitle{
+  margin: 0 0 8px;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.blankDesc{
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--muted);
+}
+
+.blankLabel{
+  margin-top: 14px;
+  margin-bottom: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.chips{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.chip{
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: 999px;
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 1.25;
+  cursor: pointer;
+  text-align: left;
+  max-width: 100%;
+  box-shadow: var(--shadow-sm);
+}
+
+.chip:hover{
+  background: rgba(0,0,0,0.03);
+}
+
+.chip:active{
+  transform: translateY(1px);
+}
+
+.blankNote{
+  margin: 14px 0 0;
+  font-size: 12px;
+  line-height: 1.55;
+  color: rgba(0,0,0,0.55);
+}
+
+/* 모바일에서 칩이 너무 꽉 차 보이지 않게 */
+@media (max-width: 640px){
+  .blankCard{
+    padding: 16px 14px;
+  }
+  .chip{
+    padding: 9px 11px;
+  }
+}

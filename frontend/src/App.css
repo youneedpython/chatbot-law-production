@@ -316,3 +316,16 @@ body{
   .blankCard{ padding: 16px 14px; }
   .chip{ padding: 9px 11px; }
 }
+
+
+/* textarea auto-resize UX */
+/* ✅ 입력이 짧을 때 스크롤바 숨김 */
+.chatInputInner textarea{
+  resize: none;
+  overflow-y: hidden;   /* 핵심: 기본은 숨김 */
+  max-height: 160px;    /* 너무 커지면 제한 */
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+

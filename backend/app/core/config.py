@@ -48,14 +48,19 @@ def validate_runtime_env():
         raise RuntimeError('OPENAI_API_KEY environment variable is required.')
 
 OPENAI_MODEL = os.getenv('OPENAI_MODEL', 'gpt-4o-mini')
-
+OPENAI_EMBEDDING_MODEL = os.getenv('OPENAI_EMBEDDING_MODEL', 'text-embedding-3-small')
 
 # ======================================
 # Optional / future settings
 # ======================================
-PINECONE_API_KEY = os.getenv('PINECONE_API_KEY')
 LANGCHAIN_TRACING_V2 = os.getenv('LANGCHAIN_TRACING_V2', 'false').lower() == 'true'
 LANGSMITH_API_KEY = os.getenv('LANGSMITH_API_KEY')
+
+PINECONE_API_KEY = os.getenv('PINECONE_API_KEY')
+PINECONE_INDEX_NAME = os.getenv('PINECONE_INDEX_NAME', 'chatbot-law-dev')
+PINECONE_NAMESPACE = os.getenv("PINECONE_NAMESPACE", "")
+
+RAG_TOP_K = int(os.getenv('RAG_TOP_K', '5'))  # 검색된 문서 개수
 
 
 # ======================================

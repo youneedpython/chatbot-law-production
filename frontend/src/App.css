@@ -5,6 +5,8 @@
    - Blank state + suggestion chips
    ========================================================= */
 
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css");
+
 /* ---------- Theme / Tokens ---------- */
 :root{
   --bg: #ffffff;
@@ -34,13 +36,15 @@
 /* ---------- Reset ---------- */
 *{ box-sizing: border-box; }
 
-html, body{ height: auto; }
+html, body{ 
+  height: auto; 
+}
 
 body{
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial,
+  font-family: Pretendard, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial,
     "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
   line-height: 1.55;
 }
@@ -74,6 +78,12 @@ body{
   margin: 6px 0 0;
   color: var(--muted);
   font-size: 14px;
+}
+
+.chatInputInner textarea,
+.chatInputInner button {
+  font-family: Pretendard, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto,
+    "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
 }
 
 /* ---------- Chat Body (NO internal scroll) ---------- */
@@ -329,3 +339,111 @@ body{
   word-break: break-word;
 }
 
+
+/* =========================================================
+   Chat Input Dock (ChatGPT-like) - FINAL OVERRIDE
+   - place this at the VERY END of App.css
+   ========================================================= */
+
+/* 하단 도킹 바(배경/여백/고정) */
+.chatInputDock{
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
+
+  /* 배경은 은은하게(떠 있는 느낌) */
+  background: transparent;
+  padding: 14px 16px 18px;
+}
+
+/* 가운데 폭을 본문과 맞춤 */
+.chatInputInner{
+  width: 100%;
+  max-width: 980px;        /* 기존 container 폭과 맞추는 값 */
+  margin: 0 auto;
+}
+
+/* form을 “입력창 하나”처럼 보이게 만들기 */
+.chatInputInner form{
+  position: relative;      /* 버튼을 안쪽에 absolute로 넣기 위함 */
+  display: flex;
+  align-items: flex-end;   /* textarea 높이가 늘어날 때 버튼이 아래쪽에 붙게 */
+}
+
+/* textarea를 ChatGPT처럼: 둥근 모서리 + 그림자 + 내부 여백 */
+.chatInputInner textarea{
+  width: 100%;
+  resize: none;            /* 사용자가 임의로 늘리는 핸들 제거 */
+  border: 1px solid #e5e7eb;
+  border-radius: 30px;
+
+  /* 버튼이 안쪽에 들어오므로 오른쪽 패딩을 더 준다 */
+  padding: 14px 52px 14px 16px;
+
+  background: #fff;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+  outline: none;
+
+  font-size: 16px;
+  line-height: 1.45;
+
+  /* 자동 높이 증가 + 스크롤바 제어는 JS에서 하고 있으니 기본은 hidden 권장 */
+  overflow-y: hidden;
+}
+
+/* 포커스 시 더 또렷한 느낌 */
+.chatInputInner textarea:focus{
+  border-color: #d1d5db;
+  outline: none;
+  box-shadow: 1px 1px 5px 1px rgba(0, 0, 0, 0.08);
+}
+
+/* 전송 버튼: 입력창 “안쪽” 우측 하단에 둥근 아이콘 버튼 */
+.chatInputInner button{
+  position: absolute;
+  right: 10px;
+  bottom: 7px;
+
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: none;
+
+  background: #111827;     /* 검정 계열(법률 챗봇 톤) */
+  color: #fff;
+
+  display: grid;
+  place-items: center;
+
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+
+  /* 텍스트 버튼 느낌 제거 */
+  padding: 0;
+  font-size: 16px;
+  line-height: 1;
+}
+
+/* disabled 시 */
+.chatInputInner button:disabled{
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.chatInputInner button:hover {
+  background: #555;
+}
+.chatInputInner button:active {
+  transform: scale(0.96);
+}
+
+
+/* hover/active 감각 */
+.chatInputInner button:not(:disabled):hover{
+  /* transform: translateY(-1px); */
+}
+.chatInputInner button:not(:disabled):active{
+  transform: translateY(0px);
+}

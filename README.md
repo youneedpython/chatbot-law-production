@@ -6,28 +6,33 @@ FastAPI 기반 백엔드와 React 프론트엔드로 구성된 **실서비스 �
 본 프로젝트는 단순한 LLM 데모가 아닌,  
 **운영 환경에서 안정적으로 동작하는 API 서버 구축**을 목표로 설계되었습니다.
 
+
+본 프로젝트는 기능 단위 릴리즈와 안정화 패치 릴리즈를 명확히 구분하여,
+운영 기준선을 중심으로 점진적으로 확장되는 구조를 지향합니다.
+
 ---
 
 ## 📌 Project Overview
 
-This release represents a production-stable baseline with verified
-dev/prod parity and applied database migrations. 
-이번 릴리스는 dev와 prod 환경의 동기화가 검증되었고, 데이터베이스 마이그레이션이 적용된 안정적인 프로덕션 기준선입니다.
+This project represents a production-stable baseline with verified dev/prod parity and applied database migrations.  
+본 프로젝트는 dev와 prod 환경의 동기화가 검증되었고,
+데이터베이스 마이그레이션이 적용된 안정적인 프로덕션 기준선을 제공합니다.
 
-- **Current Version:** v0.4.4
+
+- **Current Version:** v0.5.1
 - **Deployment:** 
   - Backend: AWS Elastic Beanstalk (Production)
   - Frontend: S3 + CloudFront (Production)
 - **Focus:** 
   - Backend & Frontend CI/CD 안정화
   - Production 배포 표준 확립 (Frontend 포함)
-- **RAG (Vector DB):** 핵심 기능으로 차기 구현 예정
+- **RAG (Vector DB):** Pinecone 기반 RAG 파이프라인 구현 및 안정화 완료
 
 ---
 
 ## 🧱 Architecture
 
-### Current (v0.4.4)
+### Current (v0.5.1)
 
 ```text
 Frontend
@@ -42,11 +47,11 @@ Backend
          └─ RDS (PostgreSQL, migrated from SQLite)
 ``` 
 
-### Planned
+### Current Extensions
 
 ```text
-Backend Extensions
-└─ RAG (Vector Store, Embeddings)
+Backend
+└─ RAG (Vector Store, Embeddings, Citation Rendering)
 ```
 ---
 
@@ -58,8 +63,8 @@ Backend Extensions
 - Request ID 기반 트레이싱
 
 ## 🔜 Planned Core Features
-- Vector DB 기반 RAG
-- 법률 문서 기반 검색 및 응답 근거 제공
+- Streaming RAG 응답 처리
+- 법률 문서 기반 응답 신뢰도 및 출처 UX 고도화
 - 대화 히스토리 기반 응답 품질 개선
 
 ---
@@ -218,12 +223,13 @@ npm run dev
 ## 🧭 Roadmap
 
 ### Core (In Progress)
-- Vector DB 기반 RAG 검색
+- RAG 응답 품질 고도화
 - 대화 히스토리 기반 응답 품질 개선
 
-### Next
+### Next (v0.6.x)
+- Streaming RAG 응답 처리
 - Prompt 전략 고도화
-- 응답 신뢰도/출처 표시
+- 응답 신뢰도 및 출처 표현 UX 개선
 
 ### Future
 - 인증 / Rate limiting

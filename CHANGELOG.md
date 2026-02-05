@@ -3,6 +3,82 @@
 All notable changes to this project are documented in this file.  
 This project follows **Semantic Versioning** (`MAJOR.MINOR.PATCH`).
 
+
+
+---
+
+## v0.5.1 — Chat 입력 UI/UX 고도화 및 시각적 안정화
+> Release Date: 2026-02-05
+
+### ✨ 개요
+v0.5.1 릴리스는 v0.5.0 이후 사용자 경험 개선을 목적으로 한  
+프론트엔드 UI/UX 중심의 패치 릴리스입니다.
+
+사용자 입력 흐름, 버튼 상태 표현, 아바타 시각 요소를 정비하여  
+실제 상담 서비스 환경에서의 사용성과 신뢰도를 강화했습니다.
+
+---
+
+### 🚀 주요 변경 사항
+
+#### Frontend — Chat UI/UX 개선
+- 채팅 입력 영역을 단일 Dock 형태 UI로 재구성
+- 아이콘 버튼 기반 입력 구조 도입
+- 입력 가능/비활성/전송 조건에 따른 버튼 상태 표현 명확화
+- Enter 전송 / Shift+Enter 줄바꿈 UX 정리
+
+#### Frontend — 시각 요소 개선
+- 채팅 아바타 디자인 업데이트 (정의의 저울 심볼 적용)
+- 아바타 이미지 용량 최적화 및 렌더링 성능 개선
+
+---
+
+### 영향 범위
+- Backend / RAG / Indexing 로직 변경 없음
+- 기존 기능 동작 변경 없음
+
+
+---
+
+## v0.5.0 — RAG 안정화 및 Chat UI/UX 개선
+
+### ✨ 개요
+v0.5.0 릴리스는 전세사기 피해자 법률 상담 챗봇의  
+RAG 파이프라인 안정화와 채팅 UI/UX 개선을 포함한 통합 릴리스입니다.
+
+검색 정확도, citation 렌더링, 사용자 입력 경험을 전반적으로 개선하여  
+실서비스 운영을 위한 품질 기준을 한 단계 끌어올렸습니다.
+
+---
+
+### 🚀 주요 변경 사항
+
+#### Backend — RAG 파이프라인 안정화
+- Pinecone 기반 검색/응답 흐름 안정화
+- top_k 설정 및 타임아웃 처리 개선
+- 메타데이터 sanitize 및 법령 citation 정확성 개선
+- citation marker 구조 개선 및 프론트 렌더링 정렬
+
+#### Indexing — 운영 스크립트 정비
+- Pinecone 인덱싱 파이프라인 스크립트 정리
+- index manifest 스냅샷 관리 구조 도입
+- metadata backfill 흐름 안정화
+
+#### Frontend — Chat UI/UX 개선
+- ChatGPT 스타일에 가까운 채팅 레이아웃 개선
+- 법 조문 기반 citation 자연스러운 렌더링
+- Suggestion chips 추가 및 클릭 전송 UX 적용
+- 채팅 입력 UX 개선 (Enter 전송 / Shift+Enter 줄바꿈)
+- 아바타 UI 개선 및 이미지 최적화
+
+---
+
+### 비고
+- 본 릴리스는 기능 추가와 안정화를 함께 포함한 메이저 마이너 릴리스입니다.
+- 본 릴리스는 이후 UI/UX 고도화 및 streaming RAG 기능 확장을 위한
+  기술적 기준선(baseline)을 확립한 릴리스입니다.
+
+
 ---
 
 ## v0.4.4 — Frontend CI/CD Pipeline for Production Deployment

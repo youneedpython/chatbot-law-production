@@ -439,11 +439,53 @@ body{
   transform: scale(0.96);
 }
 
+/* ===== Shimmer Text (thinking...) ===== */
+.thinkingShimmer {
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.2px;
 
-/* hover/active 감각 */
-.chatInputInner button:not(:disabled):hover{
-  /* transform: translateY(-1px); */
+  /* 텍스트는 검정 기반 */
+  color: transparent;
+
+  /* 검정 바탕 + 흰색 빛 */
+  background-image: linear-gradient(
+    90deg,
+    #111 0%,
+    #111 40%,
+    rgba(255, 255, 255, 0.95) 50%,
+    #111 60%,
+    #111 100%
+  );
+
+  background-size: 220% 100%;
+
+  /* 배경을 넉넉히 키우되, 이동은 px 기반으로 제어 */
+  background-size: 300px 100%;
+  background-repeat: repeat;
+
+  /* 텍스트에만 배경이 보이도록 클립 */
+  -webkit-background-clip: text;
+  background-clip: text;
+
+  /* 애니메이션 */
+  animation: thinkingShimmerMove 1.6s linear infinite;
+
+  /* 선택: 약간의 부드러움 */
+  text-rendering: geometricPrecision;
 }
-.chatInputInner button:not(:disabled):active{
-  transform: translateY(0px);
+
+/* ✅ 반드시 왼 → 오로만 보이게 (px로 제어) */
+@keyframes thinkingShimmerMove {
+  0%   { background-position: 0px 50%; }
+  100% { background-position: 300px 50%; }
+}
+
+/* 접근성: 모션 줄이기 */
+@media (prefers-reduced-motion: reduce) {
+  .thinkingShimmer {
+    animation: none;
+    color: #111;
+    background-image: none;
+  }
 }

@@ -41,11 +41,18 @@ export default function ChatList({
       {loading && (
         <div className="msgRow assistant">
           <div className="bubble assistant">
-            <span className="typingDots">
-              <span />
-              <span />
-              <span />
-            </span>
+            {/* ✅ ChatGPT처럼 상태 텍스트 표시 */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              {/* <span style={{ fontSize: 14, opacity: 0.8 }}>생각 중...</span> */}
+              <span className="thinkingShimmer">생각 중...</span>
+
+              {/* 기존 점 애니메이션 유지 */}
+              <span className="typingDots" aria-hidden="true">
+                <span />
+                <span />
+                <span />
+              </span>
+            </div>
           </div>
         </div>
       )}

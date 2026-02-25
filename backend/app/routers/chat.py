@@ -16,9 +16,10 @@ routers/chat.py
 """
 
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
+from app.core.metrics import now, span
 from app.db import get_db
 from app.repository.chat import append_message
 from app.schemas.chat_request import ChatRequest
@@ -35,6 +36,7 @@ router = APIRouter(
 def chat(
     session_id: str,
     payload: ChatRequest,
+    request: Request,  # ✅ 추가: request.state.metrics에 적재하기 위함
     db: Session = Depends(get_db),
 ):
     if not payload.message.strip():
@@ -43,33 +45,49 @@ def chat(
     # ------------------------------------------------------------------
     # 1. user 메시지 저장
     # ------------------------------------------------------------------
+    t = now()
+    message = payload.message.strip()
     append_message(
         db=db,
         conversation_id=session_id,
         role="user",
-        content=payload.message,
+        content=message,
     )
+    ms_db_user = span("db_append_user", t)
+    request.state.metrics["ms_db_user"] = ms_db_user  # ✅ 라우터 단위 메트릭 저장소에 기록
 
     # ------------------------------------------------------------------
     # 2. LLM 호출 (RAG)
-    #    ask_llm은 (answer, session_id, sources)를 반환
+    #    ask_llm은 (answer, session_id, sources, extra)를 반환
     # ------------------------------------------------------------------
-    answer, _, sources = ask_llm(
+    t = now()
+    message = payload.message.strip()
+    answer, _, sources, extra = ask_llm(
         db=db,
-        message=payload.message,
+        message=message,
         session_id=session_id,
     )
+    ms_ask_llm = span("ask_llm_total", t)
+    request.state.metrics["ms_ask_llm"] = ms_ask_llm  # ✅ 라우터 단위 메트릭 저장소에 기록
+
+    # history load도 요청 요약에 포함(2단계 요구)
+    if extra and "ms_history_load" in extra:
+        request.state.metrics["ms_history_load"] = extra["ms_history_load"]
 
     # ------------------------------------------------------------------
     # 3. assistant 메시지 저장
     #    ※ DB에는 answer만 저장 (sources는 응답 메타 정보)
     # ------------------------------------------------------------------
+    t = now()
     append_message(
         db=db,
         conversation_id=session_id,
         role="assistant",
         content=answer,
     )
+
+    ms_db_assistant = span("db_append_assistant", t)
+    request.state.metrics["ms_db_assistant"] = ms_db_assistant  # ✅ 라우터 단위 메트릭 저장소에 기록
 
     # ------------------------------------------------------------------
     # 4. 응답 반환

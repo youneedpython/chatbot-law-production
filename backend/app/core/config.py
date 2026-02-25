@@ -68,3 +68,6 @@ RAG_TOP_K = int(os.getenv('RAG_TOP_K', '5'))  # 검색된 문서 개수
 # ======================================
 # DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./test.db")
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./dev.db")
+
+
+METRICS_ENABLED = os.getenv("METRICS_ENABLED", "true").lower() == "true"

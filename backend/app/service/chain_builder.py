@@ -9,7 +9,8 @@ from langchain_core.documents import Document
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 
-from app.core.config import OPENAI_MODEL
+from app.core.metrics import now, span, mark
+from app.core.config import OPENAI_MODEL, RAG_TOP_K
 from app.core.logger import get_logger
 from app.service.retriever_service import get_retriever
 
@@ -208,15 +209,23 @@ def build_rag_chain():
         query = inputs["input"]
 
         # 1) Retrieve
+        t = now()
         docs = retriever.invoke(query)
+        span("rag_retrieve", t, k=int(RAG_TOP_K), docs=len(docs))
         logger.info("Retrieved %d documents from Pinecone", len(docs))
 
         # 2) Build context + sources
+        t = now()
         context, sources = _format_docs_with_citation_numbers(docs)
+        msg = prompt.invoke({"input": query, "context": context})
+        span("prompt_build", t, docs=len(docs), chars_context=len(context))
 
         # 3) LLM answer with forced citation format
-        msg = prompt.invoke({"input": query, "context": context})
-        answer = parser.invoke(llm.invoke(msg)).strip()
+        mark("llm_start", model=OPENAI_MODEL)
+        t = now()
+        raw = llm.invoke(msg)
+        span("llm_total", t, model=OPENAI_MODEL)
+        answer = parser.invoke(raw).strip()
 
         return {"answer": answer, "sources": sources}
 

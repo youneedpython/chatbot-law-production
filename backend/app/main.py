@@ -27,7 +27,8 @@ from app.core.request_id import (
     set_request_id,
 )
 from app.core.logger import get_logger
-from app.core.config import validate_runtime_env
+from app.core.config import METRICS_ENABLED, validate_runtime_env
+
 
 logger = get_logger("Chatbot-law-prod.middleware.request_id")
 validate_runtime_env()  ## 앱 실행 시점에 환경변수 검증
@@ -60,20 +61,60 @@ async def request_id_middleware(request: Request, call_next):
     ## 저장
     set_request_id(request_id)
 
+
+    ## 계측 코드 ##################################
+    ## (추가) 요청 단위 metrics 저장소 준비 
+    request.state.metrics = {}
+    ##############################################
+
+    response = None
+
     try:
         response: Response = await call_next(request)
+        return response
     finally:
-        duration_ms = (time.perf_counter() - start) * 1000
+        duration_ms = int((time.perf_counter() - start) * 1000)
+
         ## logger 포맷에 request_id가 자동 포함됨
         logger.info(
-            f'{request.method} {request.url.path} completed in {duration_ms: .2f}ms'
+            f'{request.method} {request.url.path} completed in {duration_ms}ms'
         )
+        
+
+        ## 계측 코드 ##################################
+        ## (추가) /health는 제외(로그 오염 방지)
+        ## (추가) 운영용 요청 요약 METRIC 로그
+        if METRICS_ENABLED:
+            path = request.url.path
+            # health는 제외 권장 (헬스체크로 로그 오염 방지)
+            if path != "/health":
+                m = getattr(request.state, "metrics", {}) or {}
+                parts = [
+                    "METRIC|event=request",
+                    f"path={path}",
+                    f"method={request.method}",
+                    f"ms_total={duration_ms}",
+                ]
+                # 라우터에서 기록한 값이 있으면 함께 출력
+                for key in (
+                    "ms_db_user",
+                    "ms_history_load",
+                    "ms_ask_llm",
+                    "ms_db_assistant",
+                ):
+                    if key in m:
+                        parts.append(f"{key}={m[key]}")
+                logger.info("|".join(parts))
+        ##############################################
+
+
+        ## 응답헤더에 X-Request-ID 포함하여 클라이언트에 전송
+        if response is not None:
+            response.headers[REQUEST_ID_HEADER] = request_id
+
         ## 다음 요청에 섞이지 않게 초기화
         set_request_id(None)
-
-    ## 응답헤더에 X-Request-ID 포함하여 클라이언트에 전송
-    response.headers[REQUEST_ID_HEADER] = request_id
-    return response  
+        
       
 
 ## 라우터 등록 (라우트 테이블에 등록)

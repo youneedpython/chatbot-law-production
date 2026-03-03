@@ -67,8 +67,19 @@ def chat(
         message=message,
         session_id=session_id,
     )
-    ms_ask_llm = span("ask_llm_total", t)
+
+    ## ask_llm_total에도 provider/model 태그를 달아준다.
+    provider = (extra or {}).get("provider")
+    model = (extra or {}).get("model")
+
+    ms_ask_llm = span("ask_llm_total", t, provider=provider, model=model)
     request.state.metrics["ms_ask_llm"] = ms_ask_llm  # ✅ 라우터 단위 메트릭 저장소에 기록
+
+    ## request 요약 로그에 실릴 수 있도록 저장
+    if provider:
+        request.state.metrics["provider"] = provider
+    if model:
+        request.state.metrics["model"] = model
 
     # history load도 요청 요약에 포함(2단계 요구)
     if extra and "ms_history_load" in extra:

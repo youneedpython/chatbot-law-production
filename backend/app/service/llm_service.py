@@ -3,8 +3,9 @@ from functools import lru_cache
 from typing import Optional, Any
 
 # from requests import Session
-from sqlalchemy.orm import Session  # ✅ 기존 코드의 requests.Session은 오타/부정확 가능성 높음
+from sqlalchemy.orm import Session
 
+from app.core.config import OPENAI_MODEL
 from app.core.logger import get_logger
 from app.core.metrics import now, span
 from app.repository.chat import list_messages
@@ -47,8 +48,8 @@ def ask_llm(db: Session, message: str, session_id: Optional[str] = None):
         )
 
     chain = get_chain()
-
     result = chain({"input": input_text})  # invoke와 동일하게 동작
+
     answer = (result.get("answer") or "").strip()
     sources = result.get("sources") or []
 
@@ -59,5 +60,11 @@ def ask_llm(db: Session, message: str, session_id: Optional[str] = None):
         len(sources),
     )
 
-    extra: dict[str, Any] = {"ms_history_load": ms_history_load}
+    ## A/B를 위한 최소 메타
+    extra: dict[str, Any] = {
+        "ms_history_load": ms_history_load,
+        "provider": "openai",
+        "model": OPENAI_MODEL,
+    }
+
     return answer, session_id, sources, extra

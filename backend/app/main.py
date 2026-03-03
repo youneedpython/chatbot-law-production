@@ -93,8 +93,16 @@ async def request_id_middleware(request: Request, call_next):
                     "METRIC|event=request",
                     f"path={path}",
                     f"method={request.method}",
-                    f"ms_total={duration_ms}",
                 ]
+
+                ## 추가: provider/model
+                if "provider" in m:
+                    parts.append(f"provider={m['provider']}")
+                if "model" in m:
+                    parts.append(f"model={m['model']}")
+
+                parts.append(f"ms_total={duration_ms}")
+                
                 # 라우터에서 기록한 값이 있으면 함께 출력
                 for key in (
                     "ms_db_user",

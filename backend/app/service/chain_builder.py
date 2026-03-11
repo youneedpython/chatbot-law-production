@@ -4,22 +4,24 @@ import json
 from pathlib import Path
 from typing import List, Any, Dict, Tuple
 
+import boto3
 from langchain_openai import ChatOpenAI
+from langchain_aws import ChatBedrock
 from langchain_core.documents import Document
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 
 from app.core.metrics import now, span, mark
-from app.core.config import OPENAI_MODEL, RAG_TOP_K
+from app.core.config import RAG_TOP_K, BEDROCK_REGION
 from app.core.logger import get_logger
 from app.service.retriever_service import get_retriever
 
 logger = get_logger("chatbot-law-prod.chain_builder")
 
 
-# -----------------------------------------------------------------------------
-# Keyword dictionary (optional)
-# -----------------------------------------------------------------------------
+## ==============================================================================
+## Keyword dictionary (optional)
+## ==============================================================================
 def load_keyword_dictionary() -> dict:
     data_path = Path(__file__).resolve().parents[1] / "data" / "keyword_dictionary.json"
 
@@ -162,10 +164,32 @@ def _format_docs_with_citation_numbers(
     return context_text, sources
 
 
-# -----------------------------------------------------------------------------
-# RAG Chain Builder (stateless)
-# -----------------------------------------------------------------------------
-def build_rag_chain():
+def _build_llm(provider: str, model_name: str):
+    if provider == "bedrock":
+        logger.info(
+            "Initializing Bedrock chat model. region=%s, model=%s",
+            BEDROCK_REGION,
+            model_name,
+        )
+
+        return ChatBedrock(
+            region_name=BEDROCK_REGION,
+            model_id=model_name,
+            model_kwargs={
+                "temperature": 0.3,
+                "max_tokens": 1024,
+            },
+        )
+    
+    logger.info("Initializing OpenAI chat model. model=%s", model_name)
+
+    return ChatOpenAI(model=model_name, temperature=0.3)
+
+
+## ==============================================================================
+## RAG Chain Builder (stateless)
+## ==============================================================================
+def build_rag_chain(provider: str, model_name: str):
     """
     Pinecone Retrieval + LLM Answer 체인을 생성합니다.
 
@@ -201,7 +225,7 @@ def build_rag_chain():
         ]
     )
 
-    llm = ChatOpenAI(model=OPENAI_MODEL, temperature=0.3)
+    llm = _build_llm(provider, model_name)
     retriever = get_retriever()
     parser = StrOutputParser()
 
@@ -221,12 +245,12 @@ def build_rag_chain():
         span("prompt_build", t, docs=len(docs), chars_context=len(context))
 
         # 3) LLM answer with forced citation format
-        mark("llm_start", model=OPENAI_MODEL)
+        mark("llm_start", provider=provider, model=model_name)
         t = now()
         raw = llm.invoke(msg)
-        span("llm_total", t, model=OPENAI_MODEL)
-        answer = parser.invoke(raw).strip()
+        span("llm_total", t, provider=provider, model=model_name)
 
+        answer = parser.invoke(raw).strip()
         return {"answer": answer, "sources": sources}
 
     return _invoke

@@ -71,3 +71,15 @@ DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./dev.db")
 
 
 METRICS_ENABLED = os.getenv("METRICS_ENABLED", "true").lower() == "true"
+
+
+# ======================================
+# provider config
+# ======================================
+LLM_PROVIDER_MODE = os.getenv("LLM_PROVIDER_MODE", "openai").lower()
+LLM_AB_RATIO = int(os.getenv("LLM_AB_RATIO", "50"))
+BEDROCK_REGION = os.getenv("BEDROCK_REGION", "us-east-1")
+BEDROCK_MODEL_ID = os.getenv(
+    "BEDROCK_MODEL_ID",
+    "anthropic.claude-3-haiku-20240307-v1:0",
+)

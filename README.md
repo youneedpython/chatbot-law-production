@@ -112,13 +112,13 @@ flowchart TD
     subgraph AWS_Edge["AWS Edge / Static CDN"]
         CF["CloudFront (CDN)"]
         S3["Amazon S3 (SPA Hosting)"]
-        CF -->|정적 리소스 서빙| S3
+        CF -->|"정적 리소스 서빙"| S3
     end
 
     subgraph AWS_Backend["AWS Elastic Beanstalk (VPC)"]
         ALB["Application Load Balancer"]
         API["FastAPI Application Server"]
-        ALB -->|/api/* 라우팅| API
+        ALB -->|"/api/* 라우팅"| API
     end
 
     subgraph Storage_and_AI["데이터베이스 & 외부 AI 엔진"]
@@ -128,12 +128,12 @@ flowchart TD
         LangSmith["LangSmith (RAG Tracing)"]
     end
 
-    UI -->|페이지 접속| CF
-    UI -->|API 요청 (/api/*)| ALB
-    API -->|대화 이력 저장/조회| RDS
-    API -->|법률 문서 벡터 검색| Pinecone
-    API -->|LLM 추론 요청| OpenAI
-    API -->|체인 실행 추적| LangSmith
+    UI -->|"페이지 접속"| CF
+    UI -->|"API 요청 (/api/*)"| ALB
+    API -->|"대화 이력 저장/조회"| RDS
+    API -->|"법률 문서 벡터 검색"| Pinecone
+    API -->|"LLM 추론 요청"| OpenAI
+    API -->|"체인 실행 추적"| LangSmith
 ```
 
 ---

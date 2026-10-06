@@ -58,6 +58,8 @@ https://github.com/user-attachments/assets/cb9309e0-e147-4b78-bd01-c5f89ed2d067
 - 인용은 모든 답변에 붙지는 않습니다.
 - 자세한 내용: [Roadmap과 한계](https://github.com/youneedpython/chatbot-law-production/wiki/Roadmap과-한계)
 
+![조항 인용이 표시된 상담 답변](docs/images/service_preview_chat.png)
+
 ### 3. 추천 질문과 대화 이력
 
 - 초기 화면의 추천 질문을 누르면 바로 상담을 시작합니다.

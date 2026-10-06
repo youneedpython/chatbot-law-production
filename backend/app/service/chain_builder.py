@@ -20,7 +20,8 @@ logger = get_logger("chatbot-law-prod.chain_builder")
 # Keyword dictionary (optional)
 # -----------------------------------------------------------------------------
 def load_keyword_dictionary() -> dict:
-    data_path = Path(__file__).resolve().parents[1] / "data" / "keyword_dictionary.json"
+    # backend/data/keyword_dictionary.json (이 파일은 backend/app/service/ 아래에 있음)
+    data_path = Path(__file__).resolve().parents[2] / "data" / "keyword_dictionary.json"
 
     if not data_path.exists():
         logger.warning("keyword_dictionary.json not found: %s", data_path)

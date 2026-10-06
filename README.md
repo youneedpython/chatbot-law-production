@@ -11,8 +11,8 @@
 | | 내용 |
 |---|---|
 | 화면 | React SPA 기반 상담 화면과 세션별 대화 이력 |
-| 데이터 | 전세사기피해자 지원 특별법 및 주택임대차보호법 원문 |
-| 모델 | OpenAI LLM / `text-embedding-3-small` 임베딩 |
+| 데이터 | 전세사기피해자 지원 및 주거안정에 관한 특별법과 같은 법 시행령 원문 |
+| 모델 | OpenAI LLM(기본 `gpt-4o-mini`) / `text-embedding-3-large` 임베딩(Index 3072차원) |
 | 검색 | Pinecone Vector Store, 기본 `RAG_TOP_K=5` |
 | 배포 | S3 · CloudFront · Elastic Beanstalk · RDS PostgreSQL |
 
@@ -20,11 +20,20 @@
 
 ---
 
-## 사용 결과
+## 사용 영상
 
-![법률 상담 답변 화면](docs/images/service_preview_chat.png)
+Local 환경에서 Pinecone Index `chatbot-law-prod`에 연결해 2026-10-06에 녹화했습니다.
 
-상담 답변은 번호 목록을 기본 형식으로 사용하며, 법령 근거가 부족한 내용은 추측하지 않도록 구성되어 있습니다.
+**PC (35초)** — 초기 화면 → 추천 질문 선택 → 답변과 조항 인용 → 이어서 질문 입력 → 답변 복사
+
+https://github.com/user-attachments/assets/b95a4a66-b910-4341-9602-f5a8283ca49a
+
+**모바일 (34초)** — 같은 흐름을 390px 화면에서
+
+https://github.com/user-attachments/assets/cb9309e0-e147-4b78-bd01-c5f89ed2d067
+
+- 답변은 번호 목록 형식이며, 문장 끝에 근거 조항을 `[전세사기피해자법 제6조 제1항]`처럼 표시합니다.
+- 조항 인용은 모든 답변에 붙지는 않습니다. 자세한 내용은 [Roadmap과 한계](https://github.com/youneedpython/chatbot-law-production/wiki/Roadmap과-한계)에 있습니다.
 
 ---
 
@@ -34,7 +43,7 @@
 
 - 법령을 법률명·조문·항 단위 메타데이터와 함께 검색합니다.
 - 검색된 근거를 바탕으로 답변하며, 근거가 부족한 법률 판단은 생성하지 않습니다.
-- 법률 원문은 `backend/data/raw_docs/`에 저장된 문서를 인덱싱한 결과를 사용합니다.
+- 법률 원문은 `backend/data/raw_docs/`에 저장된 문서 2개(특별법, 시행령)를 인덱싱한 결과를 사용합니다.
 
 ### 2. 인용 정보가 포함된 답변
 
@@ -90,15 +99,12 @@ FastAPI Backend
     └─ SQLAlchemy / Alembic → SQLite 또는 PostgreSQL
 ```
 
-| 영역 | 구성 | 역할 |
-|---|---|---|
-| Frontend | React 18, Vite, React Markdown | 상담 화면과 인용 표시 |
-| Backend | Python 3.11, FastAPI, Uvicorn | API와 세션 처리 |
-| RAG | LangChain, OpenAI, Pinecone | 임베딩·검색·답변 생성 |
-| Database | SQLAlchemy, Alembic, SQLite / PostgreSQL | 세션과 메시지 저장 |
-| 운영 | GitHub Actions, Elastic Beanstalk, S3, CloudFront | Build와 배포 |
-
----
+| API | 설명 |
+|---|---|
+| `POST /api/chat/{session_id}` | 질문을 받아 답변과 `sources` 반환 |
+| `GET /api/conversations/{session_id}/messages` | 세션의 메시지 조회 |
+| `POST /api/conversations/{session_id}/messages` | 세션에 메시지 저장 |
+| `GET /health` | 서비스 생존 확인 |
 
 ## 배포
 
@@ -106,41 +112,47 @@ FastAPI Backend
 
 현재 실제 운영 도메인과 배포 상태는 저장소 문서만으로 확인하지 않았습니다. 배포 절차는 [배포와 CI CD](https://github.com/youneedpython/chatbot-law-production/wiki/배포와-CI-CD)를 참고합니다.
 
----
+## 기술 스택
+
+| 영역 | 기술 |
+|---|---|
+| Frontend | React 19, Vite 7, React Router 7, React Markdown 10 |
+| Backend | Python 3.11, FastAPI 0.124, Uvicorn |
+| RAG | LangChain 1.2, OpenAI, Pinecone |
+| Database | SQLAlchemy 2.0, Alembic, SQLite(Local) / PostgreSQL |
+| 운영 | GitHub Actions(OIDC), Elastic Beanstalk, S3, CloudFront |
+
+정확한 Version은 `backend/requirements.txt`와 `frontend/package.json`을 따릅니다.
 
 ## 품질 검증
 
 - Pull Request에서 Backend `pytest`와 Frontend `npm run build`를 경로별로 실행합니다.
-- Backend 기본 테스트는 `backend/tests/test_smoke.py`에 있습니다.
-- Local 검증 절차는 [Local 실행](https://github.com/youneedpython/chatbot-law-production/wiki/Local-실행)에 정리되어 있습니다.
+- Backend Test는 `backend/tests/test_smoke.py`의 Smoke Test 하나입니다.
+- 검증 범위의 한계는 [Roadmap과 한계](https://github.com/youneedpython/chatbot-law-production/wiki/Roadmap과-한계)에 적었습니다.
 
 ---
 
 ## 시작하기
 
-1. Python `3.11.x`, Node.js `18.x` 또는 `20.x` 이상, Git을 준비합니다.
-2. `backend/.env.example`을 `backend/.env`으로 복사하고 `OPENAI_API_KEY`를 설정합니다.
-3. Backend에서 의존성을 설치하고 Alembic을 실행합니다.
+Python `3.11`, Node.js `20.19` 이상, OpenAI / Pinecone API Key가 필요합니다.
 
 ```bash
+# 1. Backend (http://localhost:8000)
 cd backend
-python -m venv venv
+cp .env.example .env                      # API Key, Pinecone Namespace, 임베딩 모델 입력 (Wiki 참고)
+python -m venv venv && source venv/Scripts/activate
 pip install -r requirements.txt
-alembic upgrade head
+python -m app.init_db                     # SQLite에 Table 생성
 uvicorn app.main:app --reload --port 8000
-```
 
-4. 별도 터미널에서 Frontend를 실행합니다.
-
-```bash
+# 2. Frontend (http://localhost:5173, 별도 터미널)
 cd frontend
+echo "VITE_API_BASE_URL=/api" > .env
 npm ci
 npm run dev
 ```
 
-5. `http://localhost:8000/health`와 `http://localhost:5173`에서 실행 결과를 확인합니다.
-
-환경 변수와 문제 해결 방법은 [Local 실행](https://github.com/youneedpython/chatbot-law-production/wiki/Local-실행)과 [환경 변수](https://github.com/youneedpython/chatbot-law-production/wiki/환경-변수)를 참고합니다.
+운영체제별 명령, 환경변수 전체 목록, 자주 만나는 문제는 [Local 실행](https://github.com/youneedpython/chatbot-law-production/wiki/Local-실행)과 [환경 변수](https://github.com/youneedpython/chatbot-law-production/wiki/환경-변수)에 있습니다.
 
 ---
 
